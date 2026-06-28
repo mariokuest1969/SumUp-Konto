@@ -149,6 +149,7 @@ router.post("/dropbox/sync", async (req, res) => {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+    console.error("[dropbox/sync] error:", err);
     res.status(500).json({
       success: false,
       message: `Fehler bei der Synchronisierung: ${message}`,
