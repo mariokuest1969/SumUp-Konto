@@ -108,7 +108,7 @@ router.post("/dropbox/sync", async (req, res) => {
 
     const content = await downloadFromDropbox(
       connectors,
-      "/Apps/roc.Kasse/Voucher.text"
+      "/Apps/roc.Kasse/Voucher.txt"
     );
 
     const lines = content.split("\n").filter((l) => l.trim());
@@ -121,31 +121,22 @@ router.post("/dropbox/sync", async (req, res) => {
       });
     }
 
-    const today = formatDate(new Date());
-    const lastLineIdx = lines.length - 1;
-    const lastLine = lines[lastLineIdx];
-
-    const parts = lastLine.split("\t");
-    while (parts.length < 7) parts.push("");
-    if (!parts[3]) {
-      parts[3] = today;
-    }
-    lines[lastLineIdx] = parts.join("\t");
-
-    const updatedContent = lines.join("\n");
-
     const parsedVouchers = [];
     for (const line of lines) {
+      // Voucher.txt tab-separated format from roc.Kasse:
+      // col[0] Gutscheinnummer  col[1] Menge(always 1)  col[2] Betrag
+      // col[3] Ausstellungsdatum  col[4] Kassenplatz(Key)
+      // col[5..7] Einlösung timestamps (YYMMDDHHMMSS) — may be absent
       const cols = line.split("\t");
       if (cols.length < 3) continue;
       parsedVouchers.push({
         gutscheinnummer: cols[0]?.trim() ?? "",
-        betrag: cols[1]?.trim() ?? "0",
-        key: cols[2]?.trim() ?? "",
+        betrag: cols[2]?.trim() ?? "0",
+        key: cols[4]?.trim() ?? "",
         ausstellungsdatum: cols[3]?.trim() || null,
-        einloesung1: cols[4]?.trim() || null,
-        einloesung2: cols[5]?.trim() || null,
-        einloesung3: cols[6]?.trim() || null,
+        einloesung1: parseRocTimestamp(cols[5]?.trim()),
+        einloesung2: parseRocTimestamp(cols[6]?.trim()),
+        einloesung3: parseRocTimestamp(cols[7]?.trim()),
       });
     }
 
@@ -153,9 +144,10 @@ router.post("/dropbox/sync", async (req, res) => {
 
     if (validVouchers.length > 0) {
       await db.delete(vouchersTable);
-      for (const v of validVouchers) {
+      // Bulk-insert in chunks of 200 for speed
+      const rows = validVouchers.map((v) => {
         const betr = parseFloat(v.betrag.replace(",", "."));
-        await db.insert(vouchersTable).values({
+        return {
           gutscheinnummer: v.gutscheinnummer,
           betrag: isNaN(betr) ? "0" : String(betr),
           key: v.key,
@@ -163,7 +155,11 @@ router.post("/dropbox/sync", async (req, res) => {
           einloesung1: v.einloesung1,
           einloesung2: v.einloesung2,
           einloesung3: v.einloesung3,
-        });
+        };
+      });
+      const CHUNK = 200;
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        await db.insert(vouchersTable).values(rows.slice(i, i + CHUNK));
       }
     }
 
@@ -293,6 +289,18 @@ async function downloadBatch(
     }
   }
   return results;
+}
+
+// ── Helper: parse roc.Kasse timestamp "YYMMDDHHMMSS" → "DD.MM.YYYY" ─────────
+function parseRocTimestamp(raw: string | undefined): string | null {
+  if (!raw || raw.length < 6) return null;
+  // Format: YYMMDDHHMMSS  e.g. "250118191212" = 18.01.2025
+  const yy = raw.substring(0, 2);
+  const mm = raw.substring(2, 4);
+  const dd = raw.substring(4, 6);
+  const year = parseInt(yy, 10) + 2000;
+  if (isNaN(year) || !mm || !dd) return null;
+  return `${dd}.${mm}.${year}`;
 }
 
 // ── Helper: parse date string like "18.06.26 15:36:25 MESZ" → "18.06.2026" ─
