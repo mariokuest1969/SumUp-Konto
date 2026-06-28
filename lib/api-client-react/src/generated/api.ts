@@ -654,6 +654,77 @@ export const useSyncFromDropbox = <TError = ErrorType<unknown>,
       return useMutation(getSyncFromDropboxMutationOptions(options));
     }
 
+export const getScanInvoicesUrl = () => {
+
+
+
+
+  return `/api/dropbox/scan-invoices`
+}
+
+/**
+ * Searches all rocInvoiceItem_ files in filialeKalit2017, extracts voucher numbers and dates, updates DB, exports CSV
+ * @summary Scan all rocInvoiceItem files and match voucher redemptions
+ */
+export const scanInvoices = async ( options?: RequestInit): Promise<SyncResult> => {
+
+  return customFetch<SyncResult>(getScanInvoicesUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getScanInvoicesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scanInvoices>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof scanInvoices>>, TError,void, TContext> => {
+
+const mutationKey = ['scanInvoices'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scanInvoices>>, void> = () => {
+
+
+          return  scanInvoices(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScanInvoicesMutationResult = NonNullable<Awaited<ReturnType<typeof scanInvoices>>>
+
+    export type ScanInvoicesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Scan all rocInvoiceItem files and match voucher redemptions
+ */
+export const useScanInvoices = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scanInvoices>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof scanInvoices>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getScanInvoicesMutationOptions(options));
+    }
+
 export const getExportToDropboxUrl = () => {
 
 

@@ -152,6 +152,18 @@ export const SyncFromDropboxResponse = zod.object({
 
 
 /**
+ * Searches all rocInvoiceItem_ files in filialeKalit2017, extracts voucher numbers and dates, updates DB, exports CSV
+ * @summary Scan all rocInvoiceItem files and match voucher redemptions
+ */
+export const ScanInvoicesResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string(),
+  "recordsProcessed": zod.number().nullish(),
+  "filename": zod.string().nullish()
+})
+
+
+/**
  * Exports all vouchers from the database as a CSV file to Apps/Rock.Kasse/ in Dropbox
  * @summary Export all vouchers as CSV to Dropbox
  */
