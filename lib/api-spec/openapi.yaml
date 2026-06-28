@@ -1,15 +1,18 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Voucher management API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: vouchers
+    description: Voucher operations
+  - name: dropbox
+    description: Dropbox sync operations
 paths:
   /healthz:
     get:
@@ -24,6 +27,145 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /vouchers:
+    get:
+      operationId: listVouchers
+      tags: [vouchers]
+      summary: List all vouchers
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search by Gutscheinnummer
+      responses:
+        "200":
+          description: List of vouchers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Voucher"
+    post:
+      operationId: createVoucher
+      tags: [vouchers]
+      summary: Create a new voucher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoucherInput"
+      responses:
+        "201":
+          description: Created voucher
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Voucher"
+
+  /vouchers/stats:
+    get:
+      operationId: getVoucherStats
+      tags: [vouchers]
+      summary: Get voucher statistics
+      responses:
+        "200":
+          description: Voucher stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoucherStats"
+
+  /vouchers/{id}:
+    get:
+      operationId: getVoucher
+      tags: [vouchers]
+      summary: Get a voucher by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Voucher
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Voucher"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateVoucher
+      tags: [vouchers]
+      summary: Update a voucher
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoucherUpdate"
+      responses:
+        "200":
+          description: Updated voucher
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Voucher"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteVoucher
+      tags: [vouchers]
+      summary: Delete a voucher
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /dropbox/sync:
+    post:
+      operationId: syncFromDropbox
+      tags: [dropbox]
+      summary: Sync vouchers from Dropbox Voucher.text file
+      description: Reads Apps/Rock.Kasse/Voucher.text from Dropbox, adds current date to last record, and uploads CSV back to Dropbox
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncResult"
+
+  /dropbox/export:
+    post:
+      operationId: exportToDropbox
+      tags: [dropbox]
+      summary: Export all vouchers as CSV to Dropbox
+      description: Exports all vouchers from the database as a CSV file to Apps/Rock.Kasse/ in Dropbox
+      responses:
+        "200":
+          description: Export result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncResult"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +176,103 @@ components:
       required:
         - status
 
+    Voucher:
+      type: object
+      required:
+        - id
+        - gutscheinnummer
+        - betrag
+        - key
+      properties:
+        id:
+          type: integer
+        gutscheinnummer:
+          type: string
+        betrag:
+          type: number
+        key:
+          type: string
+        ausstellungsdatum:
+          type: ["string", "null"]
+        einloesung1:
+          type: ["string", "null"]
+        einloesung2:
+          type: ["string", "null"]
+        einloesung3:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    VoucherInput:
+      type: object
+      required:
+        - gutscheinnummer
+        - betrag
+        - key
+      properties:
+        gutscheinnummer:
+          type: string
+        betrag:
+          type: number
+        key:
+          type: string
+        ausstellungsdatum:
+          type: ["string", "null"]
+        einloesung1:
+          type: ["string", "null"]
+        einloesung2:
+          type: ["string", "null"]
+        einloesung3:
+          type: ["string", "null"]
+
+    VoucherUpdate:
+      type: object
+      properties:
+        gutscheinnummer:
+          type: string
+        betrag:
+          type: number
+        key:
+          type: string
+        ausstellungsdatum:
+          type: ["string", "null"]
+        einloesung1:
+          type: ["string", "null"]
+        einloesung2:
+          type: ["string", "null"]
+        einloesung3:
+          type: ["string", "null"]
+
+    VoucherStats:
+      type: object
+      required:
+        - total
+        - totalBetrag
+        - redeemedCount
+        - unredeemed
+      properties:
+        total:
+          type: integer
+        totalBetrag:
+          type: number
+        redeemedCount:
+          type: integer
+        unredeemed:
+          type: integer
+
+    SyncResult:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        recordsProcessed:
+          type: ["integer", "null"]
+        filename:
+          type: ["string", "null"]
