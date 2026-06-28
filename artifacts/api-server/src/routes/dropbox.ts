@@ -163,16 +163,17 @@ router.post("/dropbox/sync", async (req, res) => {
       }
     }
 
-    const filename = generateFilename();
-    const dbVouchers = await db.select().from(vouchersTable).orderBy(vouchersTable.id);
-    const csvContent = vouchersToCSV(dbVouchers);
-    await uploadToDropbox(connectors, `/Apps/roc.Kasse/${filename}`, csvContent);
+    // Start scanner automatically in background — it will export the CSV when done
+    const fromYear = new Date().getFullYear() - 2;
+    runScanInBackground(fromYear).catch((e) =>
+      console.error("[sync] auto-scan error:", e),
+    );
 
     res.json({
       success: true,
-      message: `Synchronisierung erfolgreich. ${validVouchers.length} Datensätze importiert.`,
+      message: `Synchronisierung erfolgreich. ${validVouchers.length} Datensätze importiert. Rechnungs-Scanner läuft im Hintergrund und exportiert die neue Datei.`,
       recordsProcessed: validVouchers.length,
-      filename,
+      filename: null,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unbekannter Fehler";

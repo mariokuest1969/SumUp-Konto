@@ -85,12 +85,11 @@ export default function Home() {
   const syncMutation = useSyncFromDropbox({
     mutation: {
       onSuccess: (res) => {
-        toast({
-          title: "Synchronisierung erfolgreich",
-          description: res.message,
-        });
+        toast({ title: "Sync gestartet", description: res.message });
+        setScanStatus({ running: true, message: "Scan läuft...", updatedCount: 0, filesProcessed: 0 });
         queryClient.invalidateQueries({ queryKey: getListVouchersQueryKey() });
-        queryClient.invalidateQueries({ queryKey: ["/api/vouchers/stats"] });
+        queryClient.invalidateQueries({ queryKey: getGetVoucherStatsQueryKey() });
+        startPolling();
       },
       onError: (err: any) => {
         toast({
