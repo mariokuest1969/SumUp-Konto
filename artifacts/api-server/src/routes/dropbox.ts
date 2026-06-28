@@ -94,18 +94,18 @@ router.post("/dropbox/sync", async (req, res) => {
     const lastLineIdx = lines.length - 1;
     const lastLine = lines[lastLineIdx];
 
-    const parts = lastLine.split(";");
+    const parts = lastLine.split("\t");
     while (parts.length < 7) parts.push("");
     if (!parts[3]) {
       parts[3] = today;
     }
-    lines[lastLineIdx] = parts.join(";");
+    lines[lastLineIdx] = parts.join("\t");
 
     const updatedContent = lines.join("\n");
 
     const parsedVouchers = [];
     for (const line of lines) {
-      const cols = line.split(";");
+      const cols = line.split("\t");
       if (cols.length < 3) continue;
       parsedVouchers.push({
         gutscheinnummer: cols[0]?.trim() ?? "",
