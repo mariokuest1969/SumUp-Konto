@@ -254,6 +254,50 @@ router.post("/sumup/transactions/bulk-note", async (req, res) => {
   }
 });
 
+const UIW_HEADER = "Empfängertyp;Privatperson oder Geschäftsname;Land des Wohnsitzes oder der Registrierung (2-Buchstaben-Code);IBAN;Betrag (EUR);Referenz (optional)";
+
+router.post("/sumup/uiw-export", async (req, res) => {
+  try {
+    const token = await getStoredToken();
+    if (!token) return res.status(400).json({ success: false, message: "Kein Dropbox-Token gespeichert." });
+
+    interface UIWRow { empfaengertyp: string; name: string; land: string; iban: string; betrag: string; referenz?: string }
+    const { rows } = req.body as { rows: UIWRow[] };
+    if (!Array.isArray(rows) || rows.length === 0) return res.status(400).json({ success: false, message: "Keine Zeilen übergeben." });
+
+    const csvLines = rows.map(r =>
+      [r.empfaengertyp, r.name, r.land, r.iban.replace(/\s+/g, ""), r.betrag, r.referenz ?? ""].join(";")
+    );
+    const csvContent = [UIW_HEADER, ...csvLines].join("\n");
+    // No BOM — plain UTF-8
+    const fileBuffer = Buffer.from(csvContent, "utf-8");
+
+    const exportFolder = (await getExportPath()) ?? DEFAULT_FOLDER;
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+    const uiwFilename = `UIW_${timestamp}.csv`;
+    const dropboxPath = `${exportFolder}/${uiwFilename}`;
+
+    const uploadLinkRes = await dropboxApiCall(token, "/2/files/get_temporary_upload_link", {
+      commit_info: { path: dropboxPath, mode: "add", autorename: true },
+      duration: 3600,
+    });
+    const uploadLinkData = await uploadLinkRes.json() as { link?: string };
+    if (!uploadLinkData.link) return res.status(500).json({ success: false, message: "Konnte keinen Upload-Link erstellen." });
+
+    await fetch(uploadLinkData.link, {
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream" },
+      body: fileBuffer,
+    });
+
+    res.json({ success: true, message: `${uiwFilename} mit ${rows.length} Zeile(n) in Dropbox gespeichert.`, filename: uiwFilename });
+  } catch (err) {
+    res.status(500).json({ success: false, message: String(err) });
+  }
+});
+
 router.post("/sumup/import", async (_req, res) => {
   try {
     const token = await getStoredToken();
@@ -275,21 +319,21 @@ router.post("/sumup/import", async (_req, res) => {
     const rows = parseCSV(rawText);
     if (!rows.length) return res.json({ success: false, message: "Keine Daten in der CSV-Datei gefunden.", recordsImported: 0, filename: csvFile.name });
 
-    // Preserve existing notizen by matching on row data
+    // Only insert rows that don't already exist — preserves notizen on existing rows
     const existingRows = await db.select().from(sumupTransactionsTable);
-    const notizMap = new Map<string, string>();
-    for (const r of existingRows) {
-      const key = JSON.stringify(r.data);
-      if (r.notiz) notizMap.set(key, r.notiz);
+    const existingKeys = new Set(existingRows.map(r => JSON.stringify(r.data)));
+
+    const newRows = rows.filter(data => !existingKeys.has(JSON.stringify(data)));
+    if (newRows.length > 0) {
+      await db.insert(sumupTransactionsTable).values(newRows.map(data => ({ data, notiz: null })));
     }
 
-    await db.delete(sumupTransactionsTable);
-    await db.insert(sumupTransactionsTable).values(rows.map((data) => ({
-      data,
-      notiz: notizMap.get(JSON.stringify(data)) ?? null,
-    })));
+    const skipped = rows.length - newRows.length;
+    const msg = newRows.length > 0
+      ? `${newRows.length} neue Transaktionen importiert${skipped > 0 ? `, ${skipped} bereits vorhanden (übersprungen)` : ""}.`
+      : `Keine neuen Transaktionen — alle ${skipped} Einträge bereits vorhanden.`;
 
-    res.json({ success: true, message: `${rows.length} Transaktionen importiert.`, recordsImported: rows.length, filename: csvFile.name });
+    res.json({ success: true, message: msg, recordsImported: newRows.length, filename: csvFile.name });
   } catch (err) {
     res.status(500).json({ success: false, message: String(err) });
   }

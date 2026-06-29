@@ -18,7 +18,30 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
-import { Loader2, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Search, X, StickyNote } from "lucide-react";
+import { Loader2, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Search, X, StickyNote, Landmark } from "lucide-react";
+import { SumupUIWDialog, UIWDialogRow } from "@/components/SumupUIWDialog";
+
+const BETRAG_KEYS = ["Betrag", "Bruttoertrag", "Transaktionsbetrag", "Bruttobetrag"];
+const DATE_KEYS = ["Datum der Transaktion", "Datum", "Date", "Transaktionsdatum"];
+
+function extractBetrag(data: Record<string, string>): string {
+  const key = BETRAG_KEYS.find(k => k in data);
+  if (!key) return "0.00";
+  const raw = data[key].replace(",", ".").replace(/[^\d.\-]/g, "");
+  const num = parseFloat(raw) || 0;
+  return Math.abs(num).toFixed(2);
+}
+
+function extractDescription(data: Record<string, string>): string {
+  const dateKey = DATE_KEYS.find(k => k in data);
+  const others = Object.entries(data)
+    .filter(([k]) => !DATE_KEYS.includes(k) && !BETRAG_KEYS.includes(k))
+    .slice(0, 2)
+    .map(([, v]) => v)
+    .filter(Boolean);
+  const parts = dateKey ? [data[dateKey], ...others] : others;
+  return parts.join(" · ").slice(0, 80) || "Transaktion";
+}
 
 export function SumupTable() {
   const { toast } = useToast();
@@ -36,6 +59,9 @@ export function SumupTable() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkNoteText, setBulkNoteText] = useState("");
   const [showBulkNote, setShowBulkNote] = useState(false);
+
+  const [uiwOpen, setUiwOpen] = useState(false);
+  const [uiwRows, setUiwRows] = useState<UIWDialogRow[]>([]);
 
   const filtersString = React.useMemo(() => {
     const activeFilters = Object.fromEntries(
@@ -124,6 +150,20 @@ export function SumupTable() {
     );
   };
 
+  const openUIWForRow = (tx: { id: number; data: Record<string, string> }) => {
+    setUiwRows([{ transactionId: tx.id, betrag: extractBetrag(tx.data), description: extractDescription(tx.data) }]);
+    setUiwOpen(true);
+  };
+
+  const openUIWForSelected = () => {
+    const rows: UIWDialogRow[] = transactions
+      .filter(tx => selectedIds.has(tx.id))
+      .map(tx => ({ transactionId: tx.id, betrag: extractBetrag(tx.data), description: extractDescription(tx.data) }));
+    if (!rows.length) return;
+    setUiwRows(rows);
+    setUiwOpen(true);
+  };
+
   const handleDeleteRow = (id: number) => {
     if (!confirm("Eintrag wirklich löschen?")) return;
     deleteMutation.mutate({ id }, {
@@ -189,6 +229,14 @@ export function SumupTable() {
           {selectedIds.size > 0 && (
             <>
               <span className="text-sm text-muted-foreground">{selectedIds.size} ausgewählt</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openUIWForSelected}
+              >
+                <Landmark className="w-4 h-4 mr-1.5" />
+                UIW erstellen
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -312,13 +360,22 @@ export function SumupTable() {
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <button
-                        onClick={() => handleDeleteRow(tx.id)}
-                        className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Zeile löschen"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => openUIWForRow(tx)}
+                          className="text-muted-foreground hover:text-primary"
+                          title="UIW-Überweisung erstellen"
+                        >
+                          <Landmark className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRow(tx.id)}
+                          className="text-muted-foreground hover:text-destructive"
+                          title="Zeile löschen"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                     {columns.map(col => (
                       <td key={`${tx.id}-${col}`} className="px-3 py-2 align-top">
@@ -346,6 +403,8 @@ export function SumupTable() {
       <div className="text-xs text-muted-foreground text-right">
         {transactions.length} Einträge angezeigt
       </div>
+
+      <SumupUIWDialog open={uiwOpen} onOpenChange={setUiwOpen} rows={uiwRows} />
     </div>
   );
 }
