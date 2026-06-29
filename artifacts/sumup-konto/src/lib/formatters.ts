@@ -1,5 +1,3 @@
-import { format } from "date-fns";
-import { de } from "date-fns/locale";
 
 export function formatEuro(value: number | undefined | null): string {
   if (value === undefined || value === null) return "0,00 €";
@@ -12,7 +10,15 @@ export function formatEuro(value: number | undefined | null): string {
 export function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "-";
   try {
-    return format(new Date(dateStr), "dd.MM.yyyy HH:mm", { locale: de });
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   } catch (e) {
     return dateStr;
   }
