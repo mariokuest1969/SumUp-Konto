@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { db, sumupTransactionsTable } from "@workspace/db";
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import {
   BulkDeleteSumupTransactionsBody,
   UpdateSumupTransactionBody,
   UpdateSumupTransactionParams,
   DeleteSumupTransactionParams,
+  BulkNoteSumupTransactionsBody,
 } from "@workspace/api-zod";
 
 const DROPBOX_TOKEN_KEY = "dropbox_access_token";
@@ -35,18 +36,14 @@ async function dropboxApiCall(token: string, endpoint: string, body: object): Pr
 function parseCSV(text: string): Record<string, string>[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 2) return [];
-
   const delimiter = lines[0].includes(";") ? ";" : ",";
   const headers = splitCSVLine(lines[0], delimiter);
   const rows: Record<string, string>[] = [];
-
   for (let i = 1; i < lines.length; i++) {
     const values = splitCSVLine(lines[i], delimiter);
     if (values.length === 0) continue;
     const row: Record<string, string> = {};
-    headers.forEach((h, idx) => {
-      row[h.trim()] = (values[idx] ?? "").trim();
-    });
+    headers.forEach((h, idx) => { row[h.trim()] = (values[idx] ?? "").trim(); });
     rows.push(row);
   }
   return rows;
@@ -58,14 +55,9 @@ function splitCSVLine(line: string, delimiter: string): string[] {
   let inQuotes = false;
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
-    if (ch === '"') {
-      inQuotes = !inQuotes;
-    } else if (ch === delimiter && !inQuotes) {
-      result.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
+    if (ch === '"') { inQuotes = !inQuotes; }
+    else if (ch === delimiter && !inQuotes) { result.push(current); current = ""; }
+    else { current += ch; }
   }
   result.push(current);
   return result;
@@ -82,25 +74,46 @@ function rowsToCSV(rows: Record<string, string>[], columns: string[]): string {
   return [header, ...lines].join("\n");
 }
 
+function parseNum(v: string): number {
+  if (!v) return 0;
+  return parseFloat(v.replace(",", ".").replace(/[^\d.\-]/g, "")) || 0;
+}
+
+const SALDO_KEYS = ["Kontostand", "Saldo", "Balance", "Guthaben"];
+const DATE_KEYS = ["Datum der Transaktion", "Datum", "Date", "Transaktionsdatum"];
+const TIME_KEYS = ["Uhrzeit der Transaktion", "Uhrzeit", "Zeit", "Time"];
+
 router.get("/sumup/transactions", async (req, res) => {
   try {
     const { search, sortKey, sortDir, filters: filtersStr } = req.query as Record<string, string>;
-    let rows = await db.select().from(sumupTransactionsTable);
+    const rows = await db.select().from(sumupTransactionsTable);
 
     let filters: Record<string, string> = {};
     try { if (filtersStr) filters = JSON.parse(filtersStr); } catch { /* ignore */ }
 
-    let result = rows.map((r) => ({ id: r.id, data: r.data as Record<string, string>, importedAt: r.importedAt.toISOString() }));
+    let result = rows.map((r) => ({
+      id: r.id,
+      data: r.data as Record<string, string>,
+      notiz: r.notiz ?? null,
+      importedAt: r.importedAt.toISOString(),
+    }));
 
     if (search) {
       const s = search.toLowerCase();
-      result = result.filter((r) => Object.values(r.data).some((v) => v.toLowerCase().includes(s)));
+      result = result.filter((r) =>
+        Object.values(r.data).some((v) => v.toLowerCase().includes(s)) ||
+        (r.notiz ?? "").toLowerCase().includes(s)
+      );
     }
 
     for (const [col, val] of Object.entries(filters)) {
       if (val) {
         const v = val.toLowerCase();
-        result = result.filter((r) => (r.data[col] ?? "").toLowerCase().includes(v));
+        if (col === "__notiz__") {
+          result = result.filter((r) => (r.notiz ?? "").toLowerCase().includes(v));
+        } else {
+          result = result.filter((r) => (r.data[col] ?? "").toLowerCase().includes(v));
+        }
       }
     }
 
@@ -124,17 +137,12 @@ router.get("/sumup/transactions/stats", async (_req, res) => {
     const rows = await db.select().from(sumupTransactionsTable);
     const data = rows.map((r) => r.data as Record<string, string>);
 
-    const parseNum = (v: string) => {
-      if (!v) return 0;
-      return parseFloat(v.replace(",", ".").replace(/[^\d.\-]/g, "")) || 0;
-    };
-
-    const BETRAG_KEYS = ["Betrag", "Bruttoertrag", "Transaktionsbetrag"];
-    const GEBUEHR_KEYS = ["Gebühren", "Gebühr", "Gebuehr"];
-    const NETTO_KEYS = ["Nettoertrag", "Nettobetrag", "Netto"];
-
     const findKey = (obj: Record<string, string>, candidates: string[]) =>
       candidates.find((k) => k in obj) ?? null;
+
+    const BETRAG_KEYS = ["Betrag", "Bruttoertrag", "Transaktionsbetrag", "Bruttobetrag"];
+    const GEBUEHR_KEYS = ["Gebühren", "Gebühr", "Gebuehr", "Fee"];
+    const NETTO_KEYS = ["Nettoertrag", "Nettobetrag", "Netto", "Net"];
 
     let totalBetrag = 0, totalGebuehr = 0, totalNetto = 0;
     for (const row of data) {
@@ -146,13 +154,34 @@ router.get("/sumup/transactions/stats", async (_req, res) => {
       if (nk) totalNetto += parseNum(row[nk]);
     }
 
-    const latest = rows.reduce((acc, r) => (!acc || r.importedAt > acc ? r.importedAt : acc), null as Date | null);
+    // Current saldo: value of the saldo column in the most recent row (by date+time)
+    let currentSaldo: number | null = null;
+    if (data.length > 0) {
+      const sample = data[0];
+      const dateKey = findKey(sample, DATE_KEYS);
+      const timeKey = findKey(sample, TIME_KEYS);
+      const saldoKey = findKey(sample, SALDO_KEYS);
+      // If no dedicated saldo column, use the last column
+      const lastColKey = saldoKey ?? Object.keys(sample).at(-1) ?? null;
+
+      if (lastColKey) {
+        const sorted = [...data].sort((a, b) => {
+          const aStr = (dateKey ? a[dateKey] : "") + " " + (timeKey ? a[timeKey] : "");
+          const bStr = (dateKey ? b[dateKey] : "") + " " + (timeKey ? b[timeKey] : "");
+          return bStr.localeCompare(aStr, "de");
+        });
+        currentSaldo = parseNum(sorted[0][lastColKey]);
+      }
+    }
+
+    const latest = rows.reduce<Date | null>((acc, r) => (!acc || r.importedAt > acc ? r.importedAt : acc), null);
 
     res.json({
       total: rows.length,
       totalBetrag: Math.round(totalBetrag * 100) / 100,
       totalGebuehr: Math.round(totalGebuehr * 100) / 100,
       totalNetto: Math.round(totalNetto * 100) / 100,
+      currentSaldo,
       importedAt: latest ? latest.toISOString() : null,
     });
   } catch (err) {
@@ -174,11 +203,14 @@ router.get("/sumup/transactions/columns", async (_req, res) => {
 router.patch("/sumup/transactions/:id", async (req, res) => {
   try {
     const { id } = UpdateSumupTransactionParams.parse(req.params);
-    const { data } = UpdateSumupTransactionBody.parse(req.body);
-    const updated = await db.update(sumupTransactionsTable).set({ data }).where(eq(sumupTransactionsTable.id, id)).returning();
+    const body = UpdateSumupTransactionBody.parse(req.body);
+    const updatePayload: { data?: Record<string, string>; notiz?: string | null } = {};
+    if (body.data !== undefined) updatePayload.data = body.data;
+    if (body.notiz !== undefined) updatePayload.notiz = body.notiz;
+    const updated = await db.update(sumupTransactionsTable).set(updatePayload).where(eq(sumupTransactionsTable.id, id)).returning();
     if (!updated.length) return res.status(404).json({ error: "Not found" });
     const r = updated[0];
-    res.json({ id: r.id, data: r.data, importedAt: r.importedAt.toISOString() });
+    res.json({ id: r.id, data: r.data, notiz: r.notiz ?? null, importedAt: r.importedAt.toISOString() });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -205,6 +237,17 @@ router.delete("/sumup/transactions", async (req, res) => {
   }
 });
 
+router.post("/sumup/transactions/bulk-note", async (req, res) => {
+  try {
+    const { ids, notiz } = BulkNoteSumupTransactionsBody.parse(req.body);
+    if (!ids.length) return res.json({ updated: 0 });
+    await db.update(sumupTransactionsTable).set({ notiz }).where(inArray(sumupTransactionsTable.id, ids));
+    res.json({ updated: ids.length });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 router.post("/sumup/import", async (_req, res) => {
   try {
     const token = await getStoredToken();
@@ -212,10 +255,8 @@ router.post("/sumup/import", async (_req, res) => {
 
     const listRes = await dropboxApiCall(token, "/2/files/list_folder", { path: DROPBOX_FOLDER, recursive: false });
     const listData = await listRes.json() as { entries?: Array<{ name: string; path_lower: string; ".tag": string }> };
-
     const entries = listData.entries ?? [];
     const csvFile = entries.find((e) => e[".tag"] === "file" && e.name.toLowerCase().startsWith("transaktionsbericht") && e.name.toLowerCase().endsWith(".csv"));
-
     if (!csvFile) return res.status(404).json({ success: false, message: "Keine Transaktionsbericht-CSV-Datei in /Apps/roc.kasse gefunden." });
 
     const linkRes = await dropboxApiCall(token, "/2/files/get_temporary_link", { path: csvFile.path_lower });
@@ -224,12 +265,22 @@ router.post("/sumup/import", async (_req, res) => {
 
     const fileRes = await fetch(linkData.link);
     const rawText = await fileRes.text();
-
     const rows = parseCSV(rawText);
     if (!rows.length) return res.json({ success: false, message: "Keine Daten in der CSV-Datei gefunden.", recordsImported: 0, filename: csvFile.name });
 
+    // Preserve existing notizen by matching on row data
+    const existingRows = await db.select().from(sumupTransactionsTable);
+    const notizMap = new Map<string, string>();
+    for (const r of existingRows) {
+      const key = JSON.stringify(r.data);
+      if (r.notiz) notizMap.set(key, r.notiz);
+    }
+
     await db.delete(sumupTransactionsTable);
-    await db.insert(sumupTransactionsTable).values(rows.map((data) => ({ data })));
+    await db.insert(sumupTransactionsTable).values(rows.map((data) => ({
+      data,
+      notiz: notizMap.get(JSON.stringify(data)) ?? null,
+    })));
 
     res.json({ success: true, message: `${rows.length} Transaktionen importiert.`, recordsImported: rows.length, filename: csvFile.name });
   } catch (err) {
@@ -245,7 +296,7 @@ router.post("/sumup/export", async (_req, res) => {
     const rows = await db.select().from(sumupTransactionsTable);
     if (!rows.length) return res.json({ success: false, message: "Keine Transaktionen zum Exportieren." });
 
-    const data = rows.map((r) => r.data as Record<string, string>);
+    const data = rows.map((r) => ({ ...(r.data as Record<string, string>), Notiz: r.notiz ?? "" }));
     const columns = Object.keys(data[0]);
     const csvContent = rowsToCSV(data, columns);
 

@@ -9,4 +9,6 @@ import type { SumupTransactionUpdateData } from './sumupTransactionUpdateData';
 
 export interface SumupTransactionUpdate {
   data?: SumupTransactionUpdateData;
+  /** @nullable */
+  notiz?: string | null;
 }

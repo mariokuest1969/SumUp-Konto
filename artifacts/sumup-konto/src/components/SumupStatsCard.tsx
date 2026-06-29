@@ -1,7 +1,7 @@
 import { useGetSumupStats } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatEuro, formatDate } from "@/lib/formatters";
-import { Activity, Euro, Receipt, CreditCard } from "lucide-react";
+import { Activity, Euro, Receipt, CreditCard, Wallet } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function SumupStatsCard() {
@@ -9,8 +9,8 @@ export function SumupStatsCard() {
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+        {[...Array(5)].map((_, i) => (
           <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <Skeleton className="h-4 w-[100px]" />
@@ -29,7 +29,7 @@ export function SumupStatsCard() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Transaktionen</CardTitle>
@@ -37,9 +37,7 @@ export function SumupStatsCard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold font-mono">{stats.total}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Gesamtanzahl
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Gesamtanzahl</p>
           </CardContent>
         </Card>
 
@@ -50,9 +48,7 @@ export function SumupStatsCard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold font-mono text-primary">{formatEuro(stats.totalBetrag)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Gesamtsumme Brutto
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Gesamtsumme Brutto</p>
           </CardContent>
         </Card>
 
@@ -63,9 +59,7 @@ export function SumupStatsCard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold font-mono text-destructive">{formatEuro(stats.totalGebuehr)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              SumUp Transaktionsgebühren
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">SumUp Transaktionsgebühren</p>
           </CardContent>
         </Card>
 
@@ -76,9 +70,22 @@ export function SumupStatsCard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold font-mono text-emerald-600">{formatEuro(stats.totalNetto)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Auszahlungsbetrag
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Auszahlungsbetrag</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-primary">Aktueller Saldo</CardTitle>
+            <Wallet className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold font-mono text-primary">
+              {stats.currentSaldo !== null && stats.currentSaldo !== undefined
+                ? formatEuro(stats.currentSaldo)
+                : "—"}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Letzter Kontostand</p>
           </CardContent>
         </Card>
       </div>

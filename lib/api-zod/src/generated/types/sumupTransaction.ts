@@ -11,5 +11,7 @@ export interface SumupTransaction {
   id: number;
   /** All CSV columns as key-value pairs */
   data: SumupTransactionData;
+  /** @nullable */
+  notiz?: string | null;
   importedAt: string;
 }

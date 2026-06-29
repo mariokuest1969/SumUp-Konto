@@ -326,6 +326,28 @@ paths:
         "204":
           description: Deleted
 
+  /sumup/transactions/bulk-note:
+    post:
+      operationId: bulkNoteSumupTransactions
+      tags: [sumup]
+      summary: Set a note on multiple transactions at once
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SumupBulkNoteRequest"
+      responses:
+        "200":
+          description: Updated count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated:
+                    type: integer
+
   /sumup/import:
     post:
       operationId: importSumupFromDropbox
@@ -492,6 +514,8 @@ components:
           description: All CSV columns as key-value pairs
           additionalProperties:
             type: string
+        notiz:
+          type: ["string", "null"]
         importedAt:
           type: string
 
@@ -502,6 +526,8 @@ components:
           type: object
           additionalProperties:
             type: string
+        notiz:
+          type: ["string", "null"]
 
     SumupBulkDeleteRequest:
       type: object
@@ -511,6 +537,17 @@ components:
           type: array
           items:
             type: integer
+
+    SumupBulkNoteRequest:
+      type: object
+      required: [ids, notiz]
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+        notiz:
+          type: string
 
     SumupStats:
       type: object
@@ -529,6 +566,8 @@ components:
           type: number
         totalNetto:
           type: number
+        currentSaldo:
+          type: ["number", "null"]
         importedAt:
           type: ["string", "null"]
 

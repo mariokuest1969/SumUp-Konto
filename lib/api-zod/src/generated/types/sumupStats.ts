@@ -12,5 +12,7 @@ export interface SumupStats {
   totalGebuehr: number;
   totalNetto: number;
   /** @nullable */
+  currentSaldo?: number | null;
+  /** @nullable */
   importedAt: string | null;
 }

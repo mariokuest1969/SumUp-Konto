@@ -89,6 +89,8 @@ export interface SumupTransaction {
   id: number;
   /** All CSV columns as key-value pairs */
   data: SumupTransactionData;
+  /** @nullable */
+  notiz?: string | null;
   importedAt: string;
 }
 
@@ -96,10 +98,17 @@ export type SumupTransactionUpdateData = {[key: string]: string};
 
 export interface SumupTransactionUpdate {
   data?: SumupTransactionUpdateData;
+  /** @nullable */
+  notiz?: string | null;
 }
 
 export interface SumupBulkDeleteRequest {
   ids: number[];
+}
+
+export interface SumupBulkNoteRequest {
+  ids: number[];
+  notiz: string;
 }
 
 export interface SumupStats {
@@ -107,6 +116,8 @@ export interface SumupStats {
   totalBetrag: number;
   totalGebuehr: number;
   totalNetto: number;
+  /** @nullable */
+  currentSaldo?: number | null;
   /** @nullable */
   importedAt: string | null;
 }
@@ -157,5 +168,9 @@ export const ListSumupTransactionsSortDir = {
 
 export type BulkDeleteSumupTransactions200 = {
   deleted?: number;
+};
+
+export type BulkNoteSumupTransactions200 = {
+  updated?: number;
 };
 

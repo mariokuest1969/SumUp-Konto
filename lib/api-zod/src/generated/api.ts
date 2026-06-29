@@ -206,6 +206,7 @@ export const ListSumupTransactionsQueryParams = zod.object({
 export const ListSumupTransactionsResponseItem = zod.object({
   "id": zod.number(),
   "data": zod.record(zod.string(), zod.string()).describe('All CSV columns as key-value pairs'),
+  "notiz": zod.string().nullish(),
   "importedAt": zod.string()
 })
 export const ListSumupTransactionsResponse = zod.array(ListSumupTransactionsResponseItem)
@@ -231,6 +232,7 @@ export const GetSumupStatsResponse = zod.object({
   "totalBetrag": zod.number(),
   "totalGebuehr": zod.number(),
   "totalNetto": zod.number(),
+  "currentSaldo": zod.number().nullish(),
   "importedAt": zod.string().nullable()
 })
 
@@ -250,12 +252,14 @@ export const UpdateSumupTransactionParams = zod.object({
 })
 
 export const UpdateSumupTransactionBody = zod.object({
-  "data": zod.record(zod.string(), zod.string()).optional()
+  "data": zod.record(zod.string(), zod.string()).optional(),
+  "notiz": zod.string().nullish()
 })
 
 export const UpdateSumupTransactionResponse = zod.object({
   "id": zod.number(),
   "data": zod.record(zod.string(), zod.string()).describe('All CSV columns as key-value pairs'),
+  "notiz": zod.string().nullish(),
   "importedAt": zod.string()
 })
 
@@ -268,6 +272,19 @@ export const DeleteSumupTransactionParams = zod.object({
 })
 
 export const DeleteSumupTransactionResponse = zod.void()
+
+
+/**
+ * @summary Set a note on multiple transactions at once
+ */
+export const BulkNoteSumupTransactionsBody = zod.object({
+  "ids": zod.array(zod.number()),
+  "notiz": zod.string()
+})
+
+export const BulkNoteSumupTransactionsResponse = zod.object({
+  "updated": zod.number().optional()
+})
 
 
 /**

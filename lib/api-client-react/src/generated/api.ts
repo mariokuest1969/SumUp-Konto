@@ -23,10 +23,12 @@ import type {
   BulkDeleteRequest,
   BulkDeleteSumupTransactions200,
   BulkDeleteVouchers200,
+  BulkNoteSumupTransactions200,
   HealthStatus,
   ListSumupTransactionsParams,
   ListVouchersParams,
   SumupBulkDeleteRequest,
+  SumupBulkNoteRequest,
   SumupImportResult,
   SumupStats,
   SumupTransaction,
@@ -1322,6 +1324,76 @@ export const useDeleteSumupTransaction = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteSumupTransactionMutationOptions(options));
+    }
+
+export const getBulkNoteSumupTransactionsUrl = () => {
+
+
+
+
+  return `/api/sumup/transactions/bulk-note`
+}
+
+/**
+ * @summary Set a note on multiple transactions at once
+ */
+export const bulkNoteSumupTransactions = async (sumupBulkNoteRequest: SumupBulkNoteRequest, options?: RequestInit): Promise<BulkNoteSumupTransactions200> => {
+
+  return customFetch<BulkNoteSumupTransactions200>(getBulkNoteSumupTransactionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sumupBulkNoteRequest)
+  }
+);}
+
+
+
+
+export const getBulkNoteSumupTransactionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkNoteSumupTransactions>>, TError,{data: BodyType<SumupBulkNoteRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkNoteSumupTransactions>>, TError,{data: BodyType<SumupBulkNoteRequest>}, TContext> => {
+
+const mutationKey = ['bulkNoteSumupTransactions'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkNoteSumupTransactions>>, {data: BodyType<SumupBulkNoteRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  bulkNoteSumupTransactions(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkNoteSumupTransactionsMutationResult = NonNullable<Awaited<ReturnType<typeof bulkNoteSumupTransactions>>>
+    export type BulkNoteSumupTransactionsMutationBody = BodyType<SumupBulkNoteRequest>
+    export type BulkNoteSumupTransactionsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Set a note on multiple transactions at once
+ */
+export const useBulkNoteSumupTransactions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkNoteSumupTransactions>>, TError,{data: BodyType<SumupBulkNoteRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bulkNoteSumupTransactions>>,
+        TError,
+        {data: BodyType<SumupBulkNoteRequest>},
+        TContext
+      > => {
+      return useMutation(getBulkNoteSumupTransactionsMutationOptions(options));
     }
 
 export const getImportSumupFromDropboxUrl = () => {
