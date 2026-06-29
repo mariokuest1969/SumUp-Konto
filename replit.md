@@ -1,6 +1,6 @@
-# [Project name]
+# SumUp Konto
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+App zur Verwaltung von SumUp-Kontoumsätzen, Gutscheinen und Transfers.
 
 ## Run & Operate
 
