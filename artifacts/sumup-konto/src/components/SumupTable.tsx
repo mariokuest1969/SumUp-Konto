@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
-import { Loader2, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Search, X, StickyNote, Landmark, Columns3 } from "lucide-react";
+import { Loader2, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Search, X, StickyNote, Landmark, Columns3, ChevronUp, ChevronDown } from "lucide-react";
 import { SumupUIWDialog, UIWDialogRow } from "@/components/SumupUIWDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -76,6 +76,27 @@ export function SumupTable() {
       const next = new Set(prev);
       if (next.has(col)) next.delete(col); else next.add(col);
       localStorage.setItem("sumup-hidden-columns", JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
+
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem("sumup-column-order");
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+
+  const moveColumn = (col: string, dir: -1 | 1, base: string[]) => {
+    setColumnOrder(prev => {
+      const current = prev.length ? prev : base;
+      const idx = current.indexOf(col);
+      if (idx === -1) return current;
+      const next = [...current];
+      const swap = idx + dir;
+      if (swap < 0 || swap >= next.length) return current;
+      [next[idx], next[swap]] = [next[swap], next[idx]];
+      localStorage.setItem("sumup-column-order", JSON.stringify(next));
       return next;
     });
   };
@@ -221,7 +242,14 @@ export function SumupTable() {
     );
   }
 
-  const visibleColumns = columns.filter(col => !hiddenColumns.has(col));
+  const sortedColumns = React.useMemo(() => {
+    if (!columnOrder.length) return columns;
+    const inOrder = columnOrder.filter(c => columns.includes(c));
+    const rest = columns.filter(c => !columnOrder.includes(c));
+    return [...inOrder, ...rest];
+  }, [columns, columnOrder]);
+
+  const visibleColumns = sortedColumns.filter(col => !hiddenColumns.has(col));
   const allSelected = transactions.length > 0 && selectedIds.size === transactions.length;
 
   return (
@@ -257,27 +285,57 @@ export function SumupTable() {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-56 p-2" align="end">
-                <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Spalten ein-/ausblenden</p>
-                <div className="space-y-0.5 max-h-72 overflow-y-auto">
-                  {columns.map(col => (
-                    <label key={col} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
-                      <Checkbox
-                        checked={!hiddenColumns.has(col)}
-                        onCheckedChange={() => toggleColumn(col)}
-                      />
-                      <span className="truncate">{col}</span>
-                    </label>
+              <PopoverContent className="w-64 p-2" align="end">
+                <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Spalten & Reihenfolge</p>
+                <div className="space-y-0.5 max-h-80 overflow-y-auto">
+                  {sortedColumns.map((col, idx) => (
+                    <div key={col} className="flex items-center gap-1 px-1 py-1 rounded hover:bg-muted group">
+                      <div className="flex flex-col">
+                        <button
+                          className="p-0.5 rounded hover:bg-muted-foreground/20 disabled:opacity-20"
+                          disabled={idx === 0}
+                          onClick={() => moveColumn(col, -1, sortedColumns)}
+                          title="Nach oben"
+                        >
+                          <ChevronUp className="w-3 h-3" />
+                        </button>
+                        <button
+                          className="p-0.5 rounded hover:bg-muted-foreground/20 disabled:opacity-20"
+                          disabled={idx === sortedColumns.length - 1}
+                          onClick={() => moveColumn(col, 1, sortedColumns)}
+                          title="Nach unten"
+                        >
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <label className="flex items-center gap-2 flex-1 cursor-pointer text-sm min-w-0">
+                        <Checkbox
+                          checked={!hiddenColumns.has(col)}
+                          onCheckedChange={() => toggleColumn(col)}
+                        />
+                        <span className="truncate">{col}</span>
+                      </label>
+                    </div>
                   ))}
                 </div>
-                {hiddenColumns.size > 0 && (
-                  <button
-                    className="mt-2 w-full text-xs text-center text-muted-foreground hover:text-foreground py-1"
-                    onClick={() => { setHiddenColumns(new Set()); localStorage.removeItem("sumup-hidden-columns"); }}
-                  >
-                    Alle einblenden
-                  </button>
-                )}
+                <div className="mt-2 flex gap-2 border-t pt-2">
+                  {hiddenColumns.size > 0 && (
+                    <button
+                      className="flex-1 text-xs text-center text-muted-foreground hover:text-foreground py-1"
+                      onClick={() => { setHiddenColumns(new Set()); localStorage.removeItem("sumup-hidden-columns"); }}
+                    >
+                      Alle einblenden
+                    </button>
+                  )}
+                  {columnOrder.length > 0 && (
+                    <button
+                      className="flex-1 text-xs text-center text-muted-foreground hover:text-foreground py-1"
+                      onClick={() => { setColumnOrder([]); localStorage.removeItem("sumup-column-order"); }}
+                    >
+                      Reihenfolge zurücksetzen
+                    </button>
+                  )}
+                </div>
               </PopoverContent>
             </Popover>
           )}
