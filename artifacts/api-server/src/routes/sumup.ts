@@ -305,21 +305,19 @@ router.post("/sumup/uiw-export", async (req, res) => {
     const uiwFilename = `UIW_${timestamp}.csv`;
     const dropboxPath = `${exportFolder}/${uiwFilename}`;
 
-    const uploadLinkRes = await dropboxApiCall(token, "/2/files/get_temporary_upload_link", {
-      commit_info: { path: dropboxPath, mode: "add", autorename: true },
-      duration: 3600,
-    });
-    const uploadLinkData = await uploadLinkRes.json() as { link?: string };
-    if (!uploadLinkData.link) return res.status(500).json({ success: false, message: "Konnte keinen Upload-Link erstellen." });
-
-    const uploadRes = await fetch(uploadLinkData.link, {
+    // Use direct upload (simpler and more reliable than temporary upload link)
+    const uploadRes = await fetch("https://content.dropboxapi.com/2/files/upload", {
       method: "POST",
-      headers: { "Content-Type": "application/octet-stream" },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/octet-stream",
+        "Dropbox-API-Arg": JSON.stringify({ path: dropboxPath, mode: "add", autorename: true }),
+      },
       body: fileBuffer,
     });
     if (!uploadRes.ok) {
       const detail = await uploadRes.text();
-      return res.status(502).json({ success: false, message: `Dropbox-Upload fehlgeschlagen: ${detail || uploadRes.statusText}` });
+      return res.status(502).json({ success: false, message: `Dropbox-Upload fehlgeschlagen (${uploadRes.status}): ${detail || uploadRes.statusText}` });
     }
 
     res.json({ success: true, message: `${uiwFilename} mit ${rows.length} Zeile(n) in Dropbox gespeichert.`, filename: uiwFilename });
@@ -387,21 +385,18 @@ router.post("/sumup/export", async (_req, res) => {
     const exportFolder = (await getExportPath()) ?? DEFAULT_FOLDER;
     const dropboxPath = `${exportFolder}/${filename}`;
 
-    const uploadLinkRes = await dropboxApiCall(token, "/2/files/get_temporary_upload_link", {
-      commit_info: { path: dropboxPath, mode: "add", autorename: true },
-      duration: 3600,
-    });
-    const uploadLinkData = await uploadLinkRes.json() as { link?: string };
-    if (!uploadLinkData.link) return res.status(500).json({ success: false, message: "Konnte keinen Upload-Link erstellen." });
-
-    const uploadRes = await fetch(uploadLinkData.link, {
+    const uploadRes = await fetch("https://content.dropboxapi.com/2/files/upload", {
       method: "POST",
-      headers: { "Content-Type": "application/octet-stream" },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/octet-stream",
+        "Dropbox-API-Arg": JSON.stringify({ path: dropboxPath, mode: "add", autorename: true }),
+      },
       body: Buffer.from(csvContent, "utf-8"),
     });
     if (!uploadRes.ok) {
       const detail = await uploadRes.text();
-      return res.status(502).json({ success: false, message: `Dropbox-Upload fehlgeschlagen: ${detail || uploadRes.statusText}` });
+      return res.status(502).json({ success: false, message: `Dropbox-Upload fehlgeschlagen (${uploadRes.status}): ${detail || uploadRes.statusText}` });
     }
 
     res.json({ success: true, message: `Export erfolgreich: ${filename}`, filename });
