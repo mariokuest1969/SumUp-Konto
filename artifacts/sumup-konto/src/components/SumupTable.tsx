@@ -87,6 +87,35 @@ export function SumupTable() {
     } catch { return []; }
   });
 
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    try {
+      const stored = localStorage.getItem("sumup-column-widths");
+      return stored ? JSON.parse(stored) : {};
+    } catch { return {}; }
+  });
+
+  const startResize = useCallback((col: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = columnWidths[col] || 140;
+    const onMove = (mv: MouseEvent) => {
+      const newWidth = Math.max(60, startWidth + mv.clientX - startX);
+      setColumnWidths(prev => ({ ...prev, [col]: newWidth }));
+    };
+    const onUp = (mv: MouseEvent) => {
+      const newWidth = Math.max(60, startWidth + mv.clientX - startX);
+      setColumnWidths(prev => {
+        const next = { ...prev, [col]: newWidth };
+        localStorage.setItem("sumup-column-widths", JSON.stringify(next));
+        return next;
+      });
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [columnWidths]);
+
   const moveColumn = (col: string, dir: -1 | 1, base: string[]) => {
     setColumnOrder(prev => {
       const current = prev.length ? prev : base;
@@ -318,10 +347,10 @@ export function SumupTable() {
                     </div>
                   ))}
                 </div>
-                <div className="mt-2 flex gap-2 border-t pt-2">
+                <div className="mt-2 flex flex-col gap-1 border-t pt-2">
                   {hiddenColumns.size > 0 && (
                     <button
-                      className="flex-1 text-xs text-center text-muted-foreground hover:text-foreground py-1"
+                      className="w-full text-xs text-center text-muted-foreground hover:text-foreground py-1"
                       onClick={() => { setHiddenColumns(new Set()); localStorage.removeItem("sumup-hidden-columns"); }}
                     >
                       Alle einblenden
@@ -329,10 +358,18 @@ export function SumupTable() {
                   )}
                   {columnOrder.length > 0 && (
                     <button
-                      className="flex-1 text-xs text-center text-muted-foreground hover:text-foreground py-1"
+                      className="w-full text-xs text-center text-muted-foreground hover:text-foreground py-1"
                       onClick={() => { setColumnOrder([]); localStorage.removeItem("sumup-column-order"); }}
                     >
                       Reihenfolge zurücksetzen
+                    </button>
+                  )}
+                  {Object.keys(columnWidths).length > 0 && (
+                    <button
+                      className="w-full text-xs text-center text-muted-foreground hover:text-foreground py-1"
+                      onClick={() => { setColumnWidths({}); localStorage.removeItem("sumup-column-widths"); }}
+                    >
+                      Breiten zurücksetzen
                     </button>
                   )}
                 </div>
@@ -402,7 +439,7 @@ export function SumupTable() {
       {/* Table */}
       <Card className="rounded-md border overflow-hidden">
         <div className="overflow-x-auto max-w-full">
-          <table className="w-full text-sm text-left">
+          <table className="text-sm text-left" style={{ tableLayout: "fixed", width: "max-content", minWidth: "100%" }}>
             <thead className="text-xs text-muted-foreground bg-muted/50 border-b">
               <tr>
                 <th className="px-3 py-3 w-[40px]">
@@ -410,10 +447,14 @@ export function SumupTable() {
                 </th>
                 <th className="px-3 py-3 w-[40px]" />
                 {visibleColumns.map(col => (
-                  <th key={col} className="px-3 py-2 font-medium">
-                    <div className="flex flex-col gap-1.5 min-w-[110px]">
+                  <th
+                    key={col}
+                    className="px-3 py-2 font-medium relative select-none"
+                    style={{ width: columnWidths[col] ? `${columnWidths[col]}px` : undefined, minWidth: "80px" }}
+                  >
+                    <div className="flex flex-col gap-1.5">
                       <button
-                        className="flex items-center gap-1 hover:text-foreground transition-colors group text-left"
+                        className="flex items-center gap-1 hover:text-foreground transition-colors group text-left w-full overflow-hidden"
                         onClick={() => handleSort(col)}
                       >
                         <span className="truncate" title={col}>{col}</span>
@@ -428,6 +469,11 @@ export function SumupTable() {
                         onChange={(e) => handleFilterChange(col, e.target.value)}
                       />
                     </div>
+                    {/* Resize handle */}
+                    <div
+                      className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-primary/40 active:bg-primary/60 transition-colors"
+                      onMouseDown={(e) => startResize(col, e)}
+                    />
                   </th>
                 ))}
                 {/* Notiz column */}
