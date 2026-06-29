@@ -18,8 +18,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
-import { Loader2, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Search, X, StickyNote, Landmark } from "lucide-react";
+import { Loader2, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Search, X, StickyNote, Landmark, Columns3 } from "lucide-react";
 import { SumupUIWDialog, UIWDialogRow } from "@/components/SumupUIWDialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const BETRAG_KEYS = ["Betrag", "Bruttoertrag", "Transaktionsbetrag", "Bruttobetrag"];
 const DATE_KEYS = ["Datum der Transaktion", "Datum", "Date", "Transaktionsdatum"];
@@ -62,6 +63,22 @@ export function SumupTable() {
 
   const [uiwOpen, setUiwOpen] = useState(false);
   const [uiwRows, setUiwRows] = useState<UIWDialogRow[]>([]);
+
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem("sumup-hidden-columns");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const toggleColumn = (col: string) => {
+    setHiddenColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(col)) next.delete(col); else next.add(col);
+      localStorage.setItem("sumup-hidden-columns", JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
 
   const filtersString = React.useMemo(() => {
     const activeFilters = Object.fromEntries(
@@ -204,6 +221,7 @@ export function SumupTable() {
     );
   }
 
+  const visibleColumns = columns.filter(col => !hiddenColumns.has(col));
   const allSelected = transactions.length > 0 && selectedIds.size === transactions.length;
 
   return (
@@ -226,6 +244,43 @@ export function SumupTable() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {columns.length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <Columns3 className="w-4 h-4" />
+                  Spalten
+                  {hiddenColumns.size > 0 && (
+                    <span className="ml-0.5 rounded-full bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 leading-none">
+                      {hiddenColumns.size}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2" align="end">
+                <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Spalten ein-/ausblenden</p>
+                <div className="space-y-0.5 max-h-72 overflow-y-auto">
+                  {columns.map(col => (
+                    <label key={col} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                      <Checkbox
+                        checked={!hiddenColumns.has(col)}
+                        onCheckedChange={() => toggleColumn(col)}
+                      />
+                      <span className="truncate">{col}</span>
+                    </label>
+                  ))}
+                </div>
+                {hiddenColumns.size > 0 && (
+                  <button
+                    className="mt-2 w-full text-xs text-center text-muted-foreground hover:text-foreground py-1"
+                    onClick={() => { setHiddenColumns(new Set()); localStorage.removeItem("sumup-hidden-columns"); }}
+                  >
+                    Alle einblenden
+                  </button>
+                )}
+              </PopoverContent>
+            </Popover>
+          )}
           {selectedIds.size > 0 && (
             <>
               <span className="text-sm text-muted-foreground">{selectedIds.size} ausgewählt</span>
@@ -296,7 +351,7 @@ export function SumupTable() {
                   <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} />
                 </th>
                 <th className="px-3 py-3 w-[40px]" />
-                {columns.map(col => (
+                {visibleColumns.map(col => (
                   <th key={col} className="px-3 py-2 font-medium">
                     <div className="flex flex-col gap-1.5 min-w-[110px]">
                       <button
@@ -337,13 +392,13 @@ export function SumupTable() {
             <tbody className="divide-y divide-border">
               {isLoadingTransactions ? (
                 <tr>
-                  <td colSpan={columns.length + 3} className="px-4 py-12 text-center">
+                  <td colSpan={visibleColumns.length + 3} className="px-4 py-12 text-center">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
                   </td>
                 </tr>
               ) : transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length + 3} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={visibleColumns.length + 3} className="px-4 py-12 text-center text-muted-foreground">
                     Keine Transaktionen gefunden
                   </td>
                 </tr>
@@ -377,7 +432,7 @@ export function SumupTable() {
                         </button>
                       </div>
                     </td>
-                    {columns.map(col => (
+                    {visibleColumns.map(col => (
                       <td key={`${tx.id}-${col}`} className="px-3 py-2 align-top">
                         <EditableCell
                           value={tx.data[col] || ""}
