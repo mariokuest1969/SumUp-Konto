@@ -234,6 +234,8 @@ components:
           type: ["string", "null"]
         einloesung3:
           type: ["string", "null"]
+        notiz:
+          type: ["string", "null"]
         createdAt:
           type: string
         updatedAt:
@@ -269,6 +271,8 @@ components:
           type: ["string", "null"]
         einloesung3:
           type: ["string", "null"]
+        notiz:
+          type: ["string", "null"]
 
     VoucherUpdate:
       type: object
@@ -286,6 +290,8 @@ components:
         einloesung2:
           type: ["string", "null"]
         einloesung3:
+          type: ["string", "null"]
+        notiz:
           type: ["string", "null"]
 
     VoucherStats:

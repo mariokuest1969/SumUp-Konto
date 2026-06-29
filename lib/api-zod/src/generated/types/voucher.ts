@@ -19,6 +19,8 @@ export interface Voucher {
   einloesung2?: string | null;
   /** @nullable */
   einloesung3?: string | null;
+  /** @nullable */
+  notiz?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   Table,
   TableBody,
@@ -10,10 +10,11 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Voucher } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { Trash2, Edit2, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react";
+import { Trash2, Edit2, ArrowUpDown, ArrowUp, ArrowDown, X, StickyNote } from "lucide-react";
 import {
   useDeleteVoucher,
   useBulkDeleteVouchers,
+  useUpdateVoucher,
   getListVouchersQueryKey,
   getGetVoucherStatsQueryKey,
   type BulkDeleteRequest,
@@ -22,7 +23,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { VoucherDialog } from "./VoucherDialog";
 
-type SortKey = "gutscheinnummer" | "betrag" | "key" | "ausstellungsdatum" | "einloesung1" | "einloesung2" | "einloesung3";
+type SortKey = "gutscheinnummer" | "betrag" | "key" | "ausstellungsdatum" | "einloesung1" | "einloesung2" | "einloesung3" | "notiz";
 type SortDir = "asc" | "desc";
 
 type QuickFilter =
@@ -52,6 +53,9 @@ export function VoucherTable({ vouchers, isLoading }: Props) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "gutscheinnummer", dir: "asc" });
   const [activeFilters, setActiveFilters] = useState<Set<QuickFilter>>(new Set());
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  const [noteValue, setNoteValue] = useState("");
+  const noteInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -65,6 +69,27 @@ export function VoucherTable({ vouchers, isLoading }: Props) {
       onError: () => toast({ title: "Fehler beim Löschen", variant: "destructive" }),
     },
   });
+
+  const updateNoteMutation = useUpdateVoucher({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListVouchersQueryKey() });
+      },
+      onError: () => toast({ title: "Notiz konnte nicht gespeichert werden", variant: "destructive" }),
+    },
+  });
+
+  const startEditNote = (v: Voucher, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingNoteId(v.id);
+    setNoteValue(v.notiz ?? "");
+    setTimeout(() => noteInputRef.current?.focus(), 0);
+  };
+
+  const saveNote = (id: number) => {
+    updateNoteMutation.mutate({ id, data: { notiz: noteValue || null } });
+    setEditingNoteId(null);
+  };
 
   const bulkDeleteMutation = useBulkDeleteVouchers({
     mutation: {
@@ -278,6 +303,7 @@ export function VoucherTable({ vouchers, isLoading }: Props) {
               <ColHead col="einloesung1" label="Einlösung 1" />
               <ColHead col="einloesung2" label="Einlösung 2" />
               <ColHead col="einloesung3" label="Einlösung 3" />
+              <ColHead col="notiz" label="Notiz" className="min-w-[160px]" />
               <TableHead className="text-right w-20">Aktionen</TableHead>
             </TableRow>
           </TableHeader>
@@ -302,6 +328,33 @@ export function VoucherTable({ vouchers, isLoading }: Props) {
                 <TableCell>{fmt(v.einloesung1)}</TableCell>
                 <TableCell>{fmt(v.einloesung2)}</TableCell>
                 <TableCell>{fmt(v.einloesung3)}</TableCell>
+                <TableCell
+                  className="max-w-[200px]"
+                  onClick={(e) => startEditNote(v, e)}
+                  title={v.notiz ?? "Notiz hinzufügen..."}
+                >
+                  {editingNoteId === v.id ? (
+                    <input
+                      ref={noteInputRef}
+                      className="w-full border rounded px-1.5 py-0.5 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={noteValue}
+                      onChange={(e) => setNoteValue(e.target.value)}
+                      onBlur={() => saveNote(v.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); saveNote(v.id); }
+                        if (e.key === "Escape") { setEditingNoteId(null); }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder="Notiz..."
+                    />
+                  ) : v.notiz ? (
+                    <span className="text-sm truncate block max-w-[190px]">{v.notiz}</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground/40 flex items-center gap-1">
+                      <StickyNote className="w-3 h-3" /> Notiz...
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell className="text-right space-x-1" onClick={(e) => e.stopPropagation()}>
                   <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditingVoucher(v); }}>
                     <Edit2 className="w-4 h-4 text-muted-foreground" />

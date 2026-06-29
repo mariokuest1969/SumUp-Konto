@@ -33,6 +33,7 @@ export const ListVouchersResponseItem = zod.object({
   "einloesung1": zod.string().nullish(),
   "einloesung2": zod.string().nullish(),
   "einloesung3": zod.string().nullish(),
+  "notiz": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
@@ -61,7 +62,8 @@ export const CreateVoucherBody = zod.object({
   "ausstellungsdatum": zod.string().nullish(),
   "einloesung1": zod.string().nullish(),
   "einloesung2": zod.string().nullish(),
-  "einloesung3": zod.string().nullish()
+  "einloesung3": zod.string().nullish(),
+  "notiz": zod.string().nullish()
 })
 
 export const CreateVoucherResponse = zod.object({
@@ -73,6 +75,7 @@ export const CreateVoucherResponse = zod.object({
   "einloesung1": zod.string().nullish(),
   "einloesung2": zod.string().nullish(),
   "einloesung3": zod.string().nullish(),
+  "notiz": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
@@ -105,6 +108,7 @@ export const GetVoucherResponse = zod.object({
   "einloesung1": zod.string().nullish(),
   "einloesung2": zod.string().nullish(),
   "einloesung3": zod.string().nullish(),
+  "notiz": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
@@ -124,7 +128,8 @@ export const UpdateVoucherBody = zod.object({
   "ausstellungsdatum": zod.string().nullish(),
   "einloesung1": zod.string().nullish(),
   "einloesung2": zod.string().nullish(),
-  "einloesung3": zod.string().nullish()
+  "einloesung3": zod.string().nullish(),
+  "notiz": zod.string().nullish()
 })
 
 export const UpdateVoucherResponse = zod.object({
@@ -136,6 +141,7 @@ export const UpdateVoucherResponse = zod.object({
   "einloesung1": zod.string().nullish(),
   "einloesung2": zod.string().nullish(),
   "einloesung3": zod.string().nullish(),
+  "notiz": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })

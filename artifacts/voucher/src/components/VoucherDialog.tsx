@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { 
   useCreateVoucher, 
@@ -37,6 +38,7 @@ const voucherSchema = z.object({
   einloesung1: z.string().optional().nullable(),
   einloesung2: z.string().optional().nullable(),
   einloesung3: z.string().optional().nullable(),
+  notiz: z.string().optional().nullable(),
 });
 
 type VoucherFormValues = z.infer<typeof voucherSchema>;
@@ -61,6 +63,7 @@ export function VoucherDialog({ open, onOpenChange, voucher }: Props) {
       einloesung1: "",
       einloesung2: "",
       einloesung3: "",
+      notiz: "",
     },
   });
 
@@ -74,6 +77,7 @@ export function VoucherDialog({ open, onOpenChange, voucher }: Props) {
         einloesung1: voucher.einloesung1 ? voucher.einloesung1.split("T")[0] : "",
         einloesung2: voucher.einloesung2 ? voucher.einloesung2.split("T")[0] : "",
         einloesung3: voucher.einloesung3 ? voucher.einloesung3.split("T")[0] : "",
+        notiz: voucher.notiz ?? "",
       });
     } else if (!voucher && open) {
       form.reset({
@@ -84,6 +88,7 @@ export function VoucherDialog({ open, onOpenChange, voucher }: Props) {
         einloesung1: "",
         einloesung2: "",
         einloesung3: "",
+        notiz: "",
       });
     }
   }, [voucher, open, form]);
@@ -123,6 +128,7 @@ export function VoucherDialog({ open, onOpenChange, voucher }: Props) {
       einloesung1: data.einloesung1 ? new Date(data.einloesung1).toISOString() : null,
       einloesung2: data.einloesung2 ? new Date(data.einloesung2).toISOString() : null,
       einloesung3: data.einloesung3 ? new Date(data.einloesung3).toISOString() : null,
+      notiz: data.notiz || null,
     };
 
     if (voucher) {
@@ -241,7 +247,26 @@ export function VoucherDialog({ open, onOpenChange, voucher }: Props) {
               />
             </div>
 
-            <div className="flex justify-end pt-4">
+            <FormField
+              control={form.control}
+              name="notiz"
+              render={({ field }) => (
+                <FormItem className="pt-2 border-t">
+                  <FormLabel>Notiz / Verarbeitungsvermerk</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="Freie Notiz zum Gutschein..."
+                      className="resize-none h-20"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end pt-2">
               <Button type="button" variant="outline" className="mr-2" onClick={() => onOpenChange(false)}>
                 Abbrechen
               </Button>

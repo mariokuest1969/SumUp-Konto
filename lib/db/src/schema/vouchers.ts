@@ -11,6 +11,7 @@ export const vouchersTable = pgTable("vouchers", {
   einloesung1: text("einloesung1"),
   einloesung2: text("einloesung2"),
   einloesung3: text("einloesung3"),
+  notiz: text("notiz"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
