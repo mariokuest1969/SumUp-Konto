@@ -1,8 +1,35 @@
 import { Router } from "express";
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { db } from "@workspace/db";
-import { vouchersTable } from "@workspace/db";
+import { vouchersTable, settingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+
+const DROPBOX_TOKEN_KEY = "dropbox_access_token";
+
+async function getStoredToken(): Promise<string | null> {
+  try {
+    const row = await db.select().from(settingsTable).where(eq(settingsTable.key, DROPBOX_TOKEN_KEY)).limit(1);
+    return row.length > 0 ? row[0].value : null;
+  } catch {
+    return null;
+  }
+}
+
+async function dropboxApiCall(connectors: ReplitConnectors, token: string | null, endpoint: string, body: object): Promise<Response> {
+  if (token) {
+    const res = await fetch(`https://api.dropboxapi.com${endpoint}`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return res;
+  }
+  return connectors.proxy("dropbox", endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
 
 const router = Router();
 
@@ -37,15 +64,10 @@ function generateFilename(): string {
   return `Voucher ${day}.${month}.${year}.csv`;
 }
 
-async function uploadToDropbox(connectors: ReplitConnectors, path: string, content: string): Promise<void> {
-  // Step 1: Get a temporary upload link via the metadata API (api.dropboxapi.com)
-  const linkRes = await connectors.proxy("dropbox", "/2/files/get_temporary_upload_link", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      commit_info: { path, mode: "overwrite", autorename: false, mute: false },
-      duration: 14400,
-    }),
+async function uploadToDropbox(connectors: ReplitConnectors, token: string | null, path: string, content: string): Promise<void> {
+  const linkRes = await dropboxApiCall(connectors, token, "/2/files/get_temporary_upload_link", {
+    commit_info: { path, mode: "overwrite", autorename: false, mute: false },
+    duration: 14400,
   });
   if (!linkRes.ok) {
     const text = await linkRes.text();
@@ -53,7 +75,6 @@ async function uploadToDropbox(connectors: ReplitConnectors, path: string, conte
   }
   const { link } = await linkRes.json() as { link: string };
 
-  // Step 2: Upload directly to the temp link — no auth header needed (it's in the URL)
   const uploadRes = await fetch(link, {
     method: "POST",
     headers: { "Content-Type": "application/octet-stream" },
@@ -65,19 +86,13 @@ async function uploadToDropbox(connectors: ReplitConnectors, path: string, conte
   }
 }
 
-async function downloadFromDropbox(connectors: ReplitConnectors, path: string): Promise<string> {
-  // Get a temporary download link via the metadata API (api.dropboxapi.com)
-  const linkRes = await connectors.proxy("dropbox", "/2/files/get_temporary_link", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path }),
-  });
+async function downloadFromDropbox(connectors: ReplitConnectors, token: string | null, path: string): Promise<string> {
+  const linkRes = await dropboxApiCall(connectors, token, "/2/files/get_temporary_link", { path });
   if (!linkRes.ok) {
     const text = await linkRes.text();
     throw new Error(`Dropbox get_temporary_link failed: ${linkRes.status} ${text.substring(0, 300)}`);
   }
   const { link } = await linkRes.json() as { link: string };
-  // Download directly via the temp link — no auth needed
   const dlRes = await fetch(link);
   if (!dlRes.ok) {
     throw new Error(`Dropbox temp download failed: ${dlRes.status}`);
@@ -88,12 +103,9 @@ async function downloadFromDropbox(connectors: ReplitConnectors, path: string): 
 router.get("/dropbox/list", async (req, res) => {
   try {
     const connectors = new ReplitConnectors();
+    const token = await getStoredToken();
     const path = (req.query.path as string) || "";
-    const response = await connectors.proxy("dropbox", "/2/files/list_folder", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path, recursive: false }),
-    });
+    const response = await dropboxApiCall(connectors, token, "/2/files/list_folder", { path, recursive: false });
     const data = await response.json();
     res.json(data);
   } catch (err: unknown) {
@@ -105,9 +117,11 @@ router.get("/dropbox/list", async (req, res) => {
 router.post("/dropbox/sync", async (req, res) => {
   try {
     const connectors = new ReplitConnectors();
+    const token = await getStoredToken();
 
     const content = await downloadFromDropbox(
       connectors,
+      token,
       "/Apps/roc.Kasse/Voucher.txt"
     );
 
@@ -190,10 +204,11 @@ router.post("/dropbox/sync", async (req, res) => {
 router.post("/dropbox/export", async (req, res) => {
   try {
     const connectors = new ReplitConnectors();
+    const token = await getStoredToken();
     const vouchers = await db.select().from(vouchersTable).orderBy(vouchersTable.id);
     const csvContent = vouchersToCSV(vouchers);
     const filename = generateFilename();
-    await uploadToDropbox(connectors, `/Apps/roc.Kasse/${filename}`, csvContent);
+    await uploadToDropbox(connectors, token, `/Apps/roc.Kasse/${filename}`, csvContent);
 
     res.json({
       success: true,
@@ -222,16 +237,15 @@ interface DropboxEntry {
 // ── Helper: list all rocInvoiceItem_ files recursively, filtered by year ─────
 async function listInvoiceFiles(
   connectors: ReplitConnectors,
+  token: string | null,
   basePath: string,
   fromYear: number,
 ): Promise<string[]> {
   const paths: string[] = [];
   const cutoff = new Date(`${fromYear}-01-01T00:00:00Z`);
 
-  const initRes = await connectors.proxy("dropbox", "/2/files/list_folder", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path: basePath, recursive: true, limit: 2000 }),
+  const initRes = await dropboxApiCall(connectors, token, "/2/files/list_folder", {
+    path: basePath, recursive: true, limit: 2000,
   });
   if (!initRes.ok) {
     const t = await initRes.text();
@@ -251,11 +265,7 @@ async function listInvoiceFiles(
 
   let cursor: string | null = initData.has_more ? initData.cursor : null;
   while (cursor) {
-    const contRes = await connectors.proxy("dropbox", "/2/files/list_folder/continue", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cursor }),
-    });
+    const contRes = await dropboxApiCall(connectors, token, "/2/files/list_folder/continue", { cursor });
     if (!contRes.ok) break;
     const contData = await contRes.json() as { entries: DropboxEntry[]; has_more: boolean; cursor: string };
     for (const e of contData.entries) {
@@ -276,6 +286,7 @@ async function listInvoiceFiles(
 // ── Helper: download files in parallel batches ────────────────────────────────
 async function downloadBatch(
   connectors: ReplitConnectors,
+  token: string | null,
   paths: string[],
   batchSize = 8,
 ): Promise<{ path: string; content: string }[]> {
@@ -283,7 +294,7 @@ async function downloadBatch(
   for (let i = 0; i < paths.length; i += batchSize) {
     const batch = paths.slice(i, i + batchSize);
     const settled = await Promise.allSettled(
-      batch.map(async (p) => ({ path: p, content: await downloadFromDropbox(connectors, p) })),
+      batch.map(async (p) => ({ path: p, content: await downloadFromDropbox(connectors, token, p) })),
     );
     for (const r of settled) {
       if (r.status === "fulfilled") results.push(r.value);
@@ -365,17 +376,18 @@ async function runScanInBackground(fromYear: number) {
 
   try {
     const connectors = new ReplitConnectors();
+    const token = await getStoredToken();
     const basePath = "/Apps/roc.Kasse/filialeKalit2017";
 
     scanState.message = `Suche Dateien ab ${fromYear}...`;
     console.log(`[scan-invoices] listing rocInvoiceItem_ files since ${fromYear}...`);
-    const filePaths = await listInvoiceFiles(connectors, basePath, fromYear);
+    const filePaths = await listInvoiceFiles(connectors, token, basePath, fromYear);
     console.log(`[scan-invoices] found ${filePaths.length} invoice files`);
     scanState.message = `${filePaths.length} Dateien gefunden, lade herunter...`;
 
     // Download in parallel batches and parse
     const byVoucher = new Map<string, InvoiceEntry[]>();
-    const downloaded = await downloadBatch(connectors, filePaths);
+    const downloaded = await downloadBatch(connectors, token, filePaths);
     scanState.filesProcessed = downloaded.length;
 
     for (const { content } of downloaded) {
@@ -429,7 +441,7 @@ async function runScanInBackground(fromYear: number) {
     const dbVouchers = await db.select().from(vouchersTable).orderBy(vouchersTable.id);
     const csvContent = vouchersToCSV(dbVouchers);
     const filename = generateFilename();
-    await uploadToDropbox(connectors, `/Apps/roc.Kasse/${filename}`, csvContent);
+    await uploadToDropbox(connectors, token, `/Apps/roc.Kasse/${filename}`, csvContent);
 
     scanState = {
       running: false,

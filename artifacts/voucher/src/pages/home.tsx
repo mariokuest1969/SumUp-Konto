@@ -12,10 +12,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Download, Plus, Search, FileSearch, Loader2 } from "lucide-react";
+import { RefreshCw, Download, Plus, Search, FileSearch, Loader2, Settings } from "lucide-react";
 import { VoucherTable } from "@/components/VoucherTable";
 import { VoucherStats } from "@/components/VoucherStats";
 import { VoucherDialog } from "@/components/VoucherDialog";
+import { DropboxTokenDialog } from "@/components/DropboxTokenDialog";
 
 interface ScanStatus {
   running: boolean;
@@ -29,6 +30,7 @@ export default function Home() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
   const [scanStatus, setScanStatus] = useState<ScanStatus | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -124,6 +126,14 @@ export default function Home() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Voucher.Kasse</h1>
         <div className="flex items-center space-x-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTokenDialogOpen(true)}
+            title="Dropbox-Token ändern"
+          >
+            <Settings className="w-4 h-4 text-muted-foreground" />
+          </Button>
           <div className="flex flex-col items-end gap-1">
             <Button
               variant="outline"
@@ -194,6 +204,11 @@ export default function Home() {
       <VoucherDialog 
         open={dialogOpen} 
         onOpenChange={setDialogOpen} 
+      />
+
+      <DropboxTokenDialog
+        open={tokenDialogOpen}
+        onOpenChange={setTokenDialogOpen}
       />
     </div>
   );
