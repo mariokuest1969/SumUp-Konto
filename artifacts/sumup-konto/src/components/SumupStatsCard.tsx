@@ -29,7 +29,8 @@ export function SumupStatsCard() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+      <div className="overflow-x-auto">
+      <div className="grid gap-4 grid-cols-5 min-w-[700px]">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Transaktionen</CardTitle>
@@ -88,6 +89,7 @@ export function SumupStatsCard() {
             <p className="text-xs text-muted-foreground mt-1">Letzter Kontostand</p>
           </CardContent>
         </Card>
+      </div>
       </div>
 
       <div className="text-xs text-muted-foreground text-right">
