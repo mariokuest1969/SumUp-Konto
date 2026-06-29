@@ -3,6 +3,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -186,6 +187,13 @@ export function VoucherTable({ vouchers, isLoading }: Props) {
     return list;
   }, [vouchers, activeFilters, sort]);
 
+  const summary = useMemo(() => {
+    const totalBetrag = displayed.reduce((s, v) => s + Number(v.betrag), 0);
+    const eingeloest = displayed.filter((v) => !!v.einloesung1).length;
+    const offen = displayed.filter((v) => !v.einloesung1).length;
+    return { totalBetrag, eingeloest, offen };
+  }, [displayed]);
+
   const toggleSort = (key: SortKey) => {
     setSort((prev) =>
       prev.key === key
@@ -293,9 +301,12 @@ export function VoucherTable({ vouchers, isLoading }: Props) {
             Alle zurücksetzen
           </button>
         )}
-        <span className="ml-auto text-xs text-muted-foreground self-center">
-          {displayed.length} von {vouchers.length} Einträge
-        </span>
+        <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+          <span>{displayed.length} von {vouchers.length} Einträge</span>
+          <span className="font-medium text-foreground">{fmtCurrency(summary.totalBetrag)}</span>
+          <span className="text-green-600">✓ {summary.eingeloest} eingelöst</span>
+          <span className="text-orange-500">○ {summary.offen} offen</span>
+        </div>
       </div>
 
       {/* Bulk action toolbar */}
@@ -378,6 +389,28 @@ export function VoucherTable({ vouchers, isLoading }: Props) {
               </TableRow>
             ))}
           </TableBody>
+          <TableFooter>
+            <TableRow className="bg-muted/40 font-medium">
+              <TableCell />
+              <TableCell className="text-xs text-muted-foreground">
+                {displayed.length} Einträge
+              </TableCell>
+              <TableCell className="font-semibold">
+                {fmtCurrency(summary.totalBetrag)}
+              </TableCell>
+              <TableCell />
+              <TableCell />
+              <TableCell className="text-green-600 text-xs">
+                ✓ {summary.eingeloest} eingelöst
+              </TableCell>
+              <TableCell className="text-orange-500 text-xs">
+                ○ {summary.offen} offen
+              </TableCell>
+              <TableCell />
+              <TableCell />
+              <TableCell />
+            </TableRow>
+          </TableFooter>
         </Table>
       )}
 
