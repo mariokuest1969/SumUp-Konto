@@ -1,1 +1,2 @@
 - [API routing](api-routing.md) — web artifacts must fetch the shared API at root-relative `/api/...`, not `${BASE_URL}api/...` (latter hits Vite SPA fallback → JSON parse error).
+- [PWA setup](pwa-setup.md) — installable web apps use vite-plugin-pwa (autoUpdate); for subpath artifacts set manifest start_url+scope to BASE_PATH; SW only active in production build, not dev.
