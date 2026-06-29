@@ -10,20 +10,26 @@ import {
 } from "@workspace/api-zod";
 
 const DROPBOX_TOKEN_KEY = "dropbox_access_token";
-const DROPBOX_FOLDER = "/Apps/roc.kasse";
+const SUMUP_IMPORT_PATH_KEY = "sumup_import_path";
+const SUMUP_EXPORT_PATH_KEY = "sumup_export_path";
+const DEFAULT_FOLDER = "/Apps/roc.kasse";
 
 const router = Router();
 
-async function getStoredToken(): Promise<string | null> {
+async function getStoredSetting(key: string, fallback: string | null = null): Promise<string | null> {
   try {
     const { settingsTable } = await import("@workspace/db");
     const { eq: eqOp } = await import("drizzle-orm");
-    const row = await db.select().from(settingsTable).where(eqOp(settingsTable.key, DROPBOX_TOKEN_KEY)).limit(1);
-    return row.length > 0 ? row[0].value : null;
+    const row = await db.select().from(settingsTable).where(eqOp(settingsTable.key, key)).limit(1);
+    return row.length > 0 ? row[0].value : fallback;
   } catch {
-    return null;
+    return fallback;
   }
 }
+
+const getStoredToken = () => getStoredSetting(DROPBOX_TOKEN_KEY);
+const getImportPath = () => getStoredSetting(SUMUP_IMPORT_PATH_KEY, DEFAULT_FOLDER);
+const getExportPath = () => getStoredSetting(SUMUP_EXPORT_PATH_KEY, DEFAULT_FOLDER);
 
 async function dropboxApiCall(token: string, endpoint: string, body: object): Promise<Response> {
   return fetch(`https://api.dropboxapi.com${endpoint}`, {
@@ -253,7 +259,8 @@ router.post("/sumup/import", async (_req, res) => {
     const token = await getStoredToken();
     if (!token) return res.status(400).json({ success: false, message: "Kein Dropbox-Token gespeichert. Bitte Token in den Einstellungen hinterlegen." });
 
-    const listRes = await dropboxApiCall(token, "/2/files/list_folder", { path: DROPBOX_FOLDER, recursive: false });
+    const importFolder = (await getImportPath()) ?? DEFAULT_FOLDER;
+    const listRes = await dropboxApiCall(token, "/2/files/list_folder", { path: importFolder, recursive: false });
     const listData = await listRes.json() as { entries?: Array<{ name: string; path_lower: string; ".tag": string }> };
     const entries = listData.entries ?? [];
     const csvFile = entries.find((e) => e[".tag"] === "file" && e.name.toLowerCase().startsWith("transaktionsbericht") && e.name.toLowerCase().endsWith(".csv"));
@@ -303,7 +310,8 @@ router.post("/sumup/export", async (_req, res) => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
     const filename = `Transaktionsbericht_Export_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.csv`;
-    const dropboxPath = `${DROPBOX_FOLDER}/${filename}`;
+    const exportFolder = (await getExportPath()) ?? DEFAULT_FOLDER;
+    const dropboxPath = `${exportFolder}/${filename}`;
 
     const uploadLinkRes = await dropboxApiCall(token, "/2/files/get_temporary_upload_link", {
       commit_info: { path: dropboxPath, mode: "add", autorename: true },

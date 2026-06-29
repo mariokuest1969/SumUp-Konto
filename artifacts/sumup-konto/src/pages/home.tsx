@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useImportSumupFromDropbox,
@@ -9,12 +10,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { SumupTable } from "@/components/SumupTable";
 import { SumupStatsCard } from "@/components/SumupStatsCard";
+import { SumupSettingsDialog } from "@/components/SumupSettingsDialog";
 import { useToast } from "@/hooks/use-toast";
-import { CloudDownload, CloudUpload, Loader2 } from "lucide-react";
+import { CloudDownload, CloudUpload, Loader2, Settings } from "lucide-react";
 
 export default function Home() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const importMutation = useImportSumupFromDropbox();
   const exportMutation = useExportSumupToDropbox();
@@ -86,6 +89,14 @@ export default function Home() {
               {exportMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />}
               Nach Dropbox exportieren
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSettingsOpen(true)}
+              title="Einstellungen"
+            >
+              <Settings className="w-5 h-5" />
+            </Button>
           </div>
         </div>
       </header>
@@ -103,6 +114,8 @@ export default function Home() {
           <SumupTable />
         </section>
       </main>
+
+      <SumupSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }
