@@ -21,6 +21,7 @@ export interface UIWDialogRow {
   description: string;
   notiz?: string;
   transactionReferenz?: string;
+  zahlungsreferenz?: string;
 }
 
 interface Props {
@@ -102,7 +103,7 @@ export function SumupUIWDialog({ open, onOpenChange, rows }: Props) {
         name,
         iban,
         betrag: r.betrag,
-        referenz: r.description || "",
+        referenz: r.zahlungsreferenz || "",
       };
     }));
     setSharedName("");

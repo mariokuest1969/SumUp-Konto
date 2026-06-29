@@ -235,22 +235,28 @@ export function SumupTable() {
     );
   };
 
-  const REFERENZ_KEYS = ["Referenz", "Reference", "Zahlungsreferenz", "Verwendungszweck"];
+  const NAME_IBAN_KEYS = ["Referenz", "Reference"];
+  const ZAHLUNGSREFERENZ_KEYS = ["Zahlungsreferenz", "Verwendungszweck", "Betreff", "Mitteilung"];
 
   const getTransactionReferenz = (data: Record<string, string>): string => {
-    const key = REFERENZ_KEYS.find(k => k in data && data[k]);
+    const key = NAME_IBAN_KEYS.find(k => k in data && data[k]);
+    return key ? data[key] : "";
+  };
+
+  const getZahlungsreferenz = (data: Record<string, string>): string => {
+    const key = ZAHLUNGSREFERENZ_KEYS.find(k => k in data && data[k]);
     return key ? data[key] : "";
   };
 
   const openUIWForRow = (tx: { id: number; data: Record<string, string>; notiz?: string | null }) => {
-    setUiwRows([{ transactionId: tx.id, betrag: extractBetrag(tx.data), description: extractDescription(tx.data), notiz: tx.notiz ?? "", transactionReferenz: getTransactionReferenz(tx.data) }]);
+    setUiwRows([{ transactionId: tx.id, betrag: extractBetrag(tx.data), description: extractDescription(tx.data), notiz: tx.notiz ?? "", transactionReferenz: getTransactionReferenz(tx.data), zahlungsreferenz: getZahlungsreferenz(tx.data) }]);
     setUiwOpen(true);
   };
 
   const openUIWForSelected = () => {
     const rows: UIWDialogRow[] = transactions
       .filter(tx => selectedIds.has(tx.id))
-      .map(tx => ({ transactionId: tx.id, betrag: extractBetrag(tx.data), description: extractDescription(tx.data), notiz: tx.notiz ?? "", transactionReferenz: getTransactionReferenz(tx.data) }));
+      .map(tx => ({ transactionId: tx.id, betrag: extractBetrag(tx.data), description: extractDescription(tx.data), notiz: tx.notiz ?? "", transactionReferenz: getTransactionReferenz(tx.data), zahlungsreferenz: getZahlungsreferenz(tx.data) }));
     if (!rows.length) return;
     setUiwRows(rows);
     setUiwOpen(true);
