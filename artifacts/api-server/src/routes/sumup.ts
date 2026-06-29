@@ -85,16 +85,26 @@ function parseNum(v: string): number {
   return parseFloat(v.replace(",", ".").replace(/[^\d.\-]/g, "")) || 0;
 }
 
-const SALDO_KEYS = ["Verfügbarer Betrag", "Verfuegbarer Betrag", "Kontostand", "Saldo", "Balance", "Guthaben"];
+const SALDO_KEYS = ["Verfügbares Guthaben", "Verfügbarer Betrag", "Verfuegbares Guthaben", "Verfuegbarer Betrag", "Kontostand", "Saldo", "Balance", "Guthaben"];
 const DATE_KEYS = ["Datum der Transaktion", "Datum", "Date", "Transaktionsdatum"];
 const TIME_KEYS = ["Uhrzeit der Transaktion", "Uhrzeit", "Zeit", "Time"];
 
-// Convert DD.MM.YYYY[ HH:MM:SS] → YYYY-MM-DD[ HH:MM:SS] for correct chronological sort.
+// Convert DD.MM.YYYY[ HH:MM:SS] or DD.MM.YY[, HH:MM] → YYYY-MM-DD[ HH:MM:SS] for correct chronological sort.
 // Falls back to original string for other formats (ISO dates already sort correctly).
 function toSortableDate(raw: string): string {
-  const m = raw.trim().match(/^(\d{2})\.(\d{2})\.(\d{4})(.*)/);
-  if (m) return `${m[3]}-${m[2]}-${m[1]}${m[4]}`;
-  return raw;
+  const s = raw.trim();
+  // 4-digit year: DD.MM.YYYY...
+  const m4 = s.match(/^(\d{2})\.(\d{2})\.(\d{4})(.*)/);
+  if (m4) return `${m4[3]}-${m4[2]}-${m4[1]}${m4[4]}`;
+  // 2-digit year: DD.MM.YY[, HH:MM] — e.g. "29.06.26, 08:46"
+  const m2 = s.match(/^(\d{2})\.(\d{2})\.(\d{2})(.*)/);
+  if (m2) {
+    const yy = parseInt(m2[3], 10);
+    const yyyy = yy >= 50 ? 1900 + yy : 2000 + yy;
+    const rest = m2[4].replace(/^,\s*/, " "); // replace leading ", " with space
+    return `${yyyy}-${m2[2]}-${m2[1]}${rest}`;
+  }
+  return s;
 }
 
 router.get("/sumup/transactions", async (req, res) => {
