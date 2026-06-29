@@ -1,0 +1,1 @@
+- [API routing](api-routing.md) — web artifacts must fetch the shared API at root-relative `/api/...`, not `${BASE_URL}api/...` (latter hits Vite SPA fallback → JSON parse error).

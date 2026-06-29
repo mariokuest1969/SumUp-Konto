@@ -286,11 +286,15 @@ router.post("/sumup/uiw-export", async (req, res) => {
     const uploadLinkData = await uploadLinkRes.json() as { link?: string };
     if (!uploadLinkData.link) return res.status(500).json({ success: false, message: "Konnte keinen Upload-Link erstellen." });
 
-    await fetch(uploadLinkData.link, {
+    const uploadRes = await fetch(uploadLinkData.link, {
       method: "POST",
       headers: { "Content-Type": "application/octet-stream" },
       body: fileBuffer,
     });
+    if (!uploadRes.ok) {
+      const detail = await uploadRes.text();
+      return res.status(502).json({ success: false, message: `Dropbox-Upload fehlgeschlagen: ${detail || uploadRes.statusText}` });
+    }
 
     res.json({ success: true, message: `${uiwFilename} mit ${rows.length} Zeile(n) in Dropbox gespeichert.`, filename: uiwFilename });
   } catch (err) {
@@ -364,11 +368,15 @@ router.post("/sumup/export", async (_req, res) => {
     const uploadLinkData = await uploadLinkRes.json() as { link?: string };
     if (!uploadLinkData.link) return res.status(500).json({ success: false, message: "Konnte keinen Upload-Link erstellen." });
 
-    await fetch(uploadLinkData.link, {
+    const uploadRes = await fetch(uploadLinkData.link, {
       method: "POST",
       headers: { "Content-Type": "application/octet-stream" },
       body: Buffer.from(csvContent, "utf-8"),
     });
+    if (!uploadRes.ok) {
+      const detail = await uploadRes.text();
+      return res.status(502).json({ success: false, message: `Dropbox-Upload fehlgeschlagen: ${detail || uploadRes.statusText}` });
+    }
 
     res.json({ success: true, message: `Export erfolgreich: ${filename}`, filename });
   } catch (err) {

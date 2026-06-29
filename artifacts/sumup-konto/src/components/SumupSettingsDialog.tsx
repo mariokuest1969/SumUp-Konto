@@ -14,8 +14,6 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, FolderInput, FolderOutput, Key, CheckCircle2, AlertCircle } from "lucide-react";
 
-const BASE = import.meta.env.BASE_URL;
-
 interface SumupPaths { importPath: string; exportPath: string }
 interface TokenStatus { set: boolean; masked?: string }
 
@@ -44,8 +42,8 @@ export function SumupSettingsDialog({ open, onOpenChange }: Props) {
 
     setLoadingPaths(true);
     Promise.all([
-      fetch(`${BASE}api/settings/sumup-paths`).then(r => r.json()),
-      fetch(`${BASE}api/settings/dropbox-token`).then(r => r.json()),
+      fetch(`/api/settings/sumup-paths`).then(r => r.json()),
+      fetch(`/api/settings/dropbox-token`).then(r => r.json()),
     ]).then(([p, t]) => {
       setPaths({ importPath: p.importPath ?? "/Apps/roc.kasse", exportPath: p.exportPath ?? "/Apps/roc.kasse" });
       setTokenStatus(t);
@@ -57,7 +55,7 @@ export function SumupSettingsDialog({ open, onOpenChange }: Props) {
   const handleSavePaths = async () => {
     setSavingPaths(true);
     try {
-      const res = await fetch(`${BASE}api/settings/sumup-paths`, {
+      const res = await fetch(`/api/settings/sumup-paths`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(paths),
@@ -76,7 +74,7 @@ export function SumupSettingsDialog({ open, onOpenChange }: Props) {
     if (!newToken.trim()) return;
     setSavingToken(true);
     try {
-      const res = await fetch(`${BASE}api/settings/dropbox-token`, {
+      const res = await fetch(`/api/settings/dropbox-token`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: newToken.trim() }),
@@ -97,11 +95,12 @@ export function SumupSettingsDialog({ open, onOpenChange }: Props) {
     if (!confirm("Dropbox-Token wirklich löschen?")) return;
     setSavingToken(true);
     try {
-      await fetch(`${BASE}api/settings/dropbox-token`, {
+      const res = await fetch(`/api/settings/dropbox-token`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: "" }),
       });
+      if (!res.ok) throw new Error();
       setTokenStatus({ set: false });
       toast({ title: "Token gelöscht" });
     } catch {

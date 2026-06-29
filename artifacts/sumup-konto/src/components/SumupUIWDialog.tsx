@@ -15,8 +15,6 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Landmark, FileDown } from "lucide-react";
 
-const BASE = import.meta.env.BASE_URL;
-
 export interface UIWDialogRow {
   transactionId: number;
   betrag: string;
@@ -70,7 +68,7 @@ export function SumupUIWDialog({ open, onOpenChange, rows }: Props) {
         referenz: d.referenz.trim() || rows[i]?.description || "",
       }));
 
-      const res = await fetch(`${BASE}api/sumup/uiw-export`, {
+      const res = await fetch(`/api/sumup/uiw-export`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rows: payload }),
