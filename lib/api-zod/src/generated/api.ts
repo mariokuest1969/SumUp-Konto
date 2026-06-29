@@ -193,3 +193,102 @@ export const ExportToDropboxResponse = zod.object({
 })
 
 
+/**
+ * @summary List SumUp transactions with optional filter and sort
+ */
+export const ListSumupTransactionsQueryParams = zod.object({
+  "search": zod.coerce.string().optional().describe('Search across all fields'),
+  "sortKey": zod.coerce.string().optional().describe('Column name to sort by'),
+  "sortDir": zod.enum(['asc', 'desc']).optional(),
+  "filters": zod.coerce.string().optional().describe('JSON-encoded object of column->value filters')
+})
+
+export const ListSumupTransactionsResponseItem = zod.object({
+  "id": zod.number(),
+  "data": zod.record(zod.string(), zod.string()).describe('All CSV columns as key-value pairs'),
+  "importedAt": zod.string()
+})
+export const ListSumupTransactionsResponse = zod.array(ListSumupTransactionsResponseItem)
+
+
+/**
+ * @summary Delete multiple transactions by ID
+ */
+export const BulkDeleteSumupTransactionsBody = zod.object({
+  "ids": zod.array(zod.number())
+})
+
+export const BulkDeleteSumupTransactionsResponse = zod.object({
+  "deleted": zod.number().optional()
+})
+
+
+/**
+ * @summary Get summary statistics for transactions
+ */
+export const GetSumupStatsResponse = zod.object({
+  "total": zod.number(),
+  "totalBetrag": zod.number(),
+  "totalGebuehr": zod.number(),
+  "totalNetto": zod.number(),
+  "importedAt": zod.string().nullable()
+})
+
+
+/**
+ * @summary Get available column names from imported data
+ */
+export const GetSumupColumnsResponseItem = zod.string()
+export const GetSumupColumnsResponse = zod.array(GetSumupColumnsResponseItem)
+
+
+/**
+ * @summary Update a transaction's data fields
+ */
+export const UpdateSumupTransactionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateSumupTransactionBody = zod.object({
+  "data": zod.record(zod.string(), zod.string()).optional()
+})
+
+export const UpdateSumupTransactionResponse = zod.object({
+  "id": zod.number(),
+  "data": zod.record(zod.string(), zod.string()).describe('All CSV columns as key-value pairs'),
+  "importedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a single transaction
+ */
+export const DeleteSumupTransactionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteSumupTransactionResponse = zod.void()
+
+
+/**
+ * @summary Import Transaktionsbericht CSV from Dropbox
+ */
+export const ImportSumupFromDropboxResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string(),
+  "recordsImported": zod.number().nullish(),
+  "filename": zod.string().nullish()
+})
+
+
+/**
+ * @summary Export current transactions as new CSV to Dropbox
+ */
+export const ExportSumupToDropboxResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string(),
+  "recordsImported": zod.number().nullish(),
+  "filename": zod.string().nullish()
+})
+
+

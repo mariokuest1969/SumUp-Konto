@@ -21,9 +21,16 @@ import type {
 
 import type {
   BulkDeleteRequest,
+  BulkDeleteSumupTransactions200,
   BulkDeleteVouchers200,
   HealthStatus,
+  ListSumupTransactionsParams,
   ListVouchersParams,
+  SumupBulkDeleteRequest,
+  SumupImportResult,
+  SumupStats,
+  SumupTransaction,
+  SumupTransactionUpdate,
   SyncResult,
   Voucher,
   VoucherInput,
@@ -866,5 +873,594 @@ export const useExportToDropbox = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getExportToDropboxMutationOptions(options));
+    }
+
+export const getListSumupTransactionsUrl = (params?: ListSumupTransactionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/sumup/transactions?${stringifiedParams}` : `/api/sumup/transactions`
+}
+
+/**
+ * @summary List SumUp transactions with optional filter and sort
+ */
+export const listSumupTransactions = async (params?: ListSumupTransactionsParams, options?: RequestInit): Promise<SumupTransaction[]> => {
+
+  return customFetch<SumupTransaction[]>(getListSumupTransactionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSumupTransactionsQueryKey = (params?: ListSumupTransactionsParams,) => {
+    return [
+    `/api/sumup/transactions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSumupTransactionsQueryOptions = <TData = Awaited<ReturnType<typeof listSumupTransactions>>, TError = ErrorType<unknown>>(params?: ListSumupTransactionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSumupTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSumupTransactionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSumupTransactions>>> = ({ signal }) => listSumupTransactions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSumupTransactions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSumupTransactionsQueryResult = NonNullable<Awaited<ReturnType<typeof listSumupTransactions>>>
+export type ListSumupTransactionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List SumUp transactions with optional filter and sort
+ */
+
+export function useListSumupTransactions<TData = Awaited<ReturnType<typeof listSumupTransactions>>, TError = ErrorType<unknown>>(
+ params?: ListSumupTransactionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSumupTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSumupTransactionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getBulkDeleteSumupTransactionsUrl = () => {
+
+
+
+
+  return `/api/sumup/transactions`
+}
+
+/**
+ * @summary Delete multiple transactions by ID
+ */
+export const bulkDeleteSumupTransactions = async (sumupBulkDeleteRequest: SumupBulkDeleteRequest, options?: RequestInit): Promise<BulkDeleteSumupTransactions200> => {
+
+  return customFetch<BulkDeleteSumupTransactions200>(getBulkDeleteSumupTransactionsUrl(),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sumupBulkDeleteRequest)
+  }
+);}
+
+
+
+
+export const getBulkDeleteSumupTransactionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteSumupTransactions>>, TError,{data: BodyType<SumupBulkDeleteRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteSumupTransactions>>, TError,{data: BodyType<SumupBulkDeleteRequest>}, TContext> => {
+
+const mutationKey = ['bulkDeleteSumupTransactions'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkDeleteSumupTransactions>>, {data: BodyType<SumupBulkDeleteRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  bulkDeleteSumupTransactions(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkDeleteSumupTransactionsMutationResult = NonNullable<Awaited<ReturnType<typeof bulkDeleteSumupTransactions>>>
+    export type BulkDeleteSumupTransactionsMutationBody = BodyType<SumupBulkDeleteRequest>
+    export type BulkDeleteSumupTransactionsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete multiple transactions by ID
+ */
+export const useBulkDeleteSumupTransactions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteSumupTransactions>>, TError,{data: BodyType<SumupBulkDeleteRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bulkDeleteSumupTransactions>>,
+        TError,
+        {data: BodyType<SumupBulkDeleteRequest>},
+        TContext
+      > => {
+      return useMutation(getBulkDeleteSumupTransactionsMutationOptions(options));
+    }
+
+export const getGetSumupStatsUrl = () => {
+
+
+
+
+  return `/api/sumup/transactions/stats`
+}
+
+/**
+ * @summary Get summary statistics for transactions
+ */
+export const getSumupStats = async ( options?: RequestInit): Promise<SumupStats> => {
+
+  return customFetch<SumupStats>(getGetSumupStatsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSumupStatsQueryKey = () => {
+    return [
+    `/api/sumup/transactions/stats`
+    ] as const;
+    }
+
+
+export const getGetSumupStatsQueryOptions = <TData = Awaited<ReturnType<typeof getSumupStats>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSumupStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSumupStatsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSumupStats>>> = ({ signal }) => getSumupStats({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSumupStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSumupStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getSumupStats>>>
+export type GetSumupStatsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get summary statistics for transactions
+ */
+
+export function useGetSumupStats<TData = Awaited<ReturnType<typeof getSumupStats>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSumupStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSumupStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSumupColumnsUrl = () => {
+
+
+
+
+  return `/api/sumup/transactions/columns`
+}
+
+/**
+ * @summary Get available column names from imported data
+ */
+export const getSumupColumns = async ( options?: RequestInit): Promise<string[]> => {
+
+  return customFetch<string[]>(getGetSumupColumnsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSumupColumnsQueryKey = () => {
+    return [
+    `/api/sumup/transactions/columns`
+    ] as const;
+    }
+
+
+export const getGetSumupColumnsQueryOptions = <TData = Awaited<ReturnType<typeof getSumupColumns>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSumupColumns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSumupColumnsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSumupColumns>>> = ({ signal }) => getSumupColumns({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSumupColumns>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSumupColumnsQueryResult = NonNullable<Awaited<ReturnType<typeof getSumupColumns>>>
+export type GetSumupColumnsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get available column names from imported data
+ */
+
+export function useGetSumupColumns<TData = Awaited<ReturnType<typeof getSumupColumns>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSumupColumns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSumupColumnsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSumupTransactionUrl = (id: number,) => {
+
+
+
+
+  return `/api/sumup/transactions/${id}`
+}
+
+/**
+ * @summary Update a transaction's data fields
+ */
+export const updateSumupTransaction = async (id: number,
+    sumupTransactionUpdate: SumupTransactionUpdate, options?: RequestInit): Promise<SumupTransaction> => {
+
+  return customFetch<SumupTransaction>(getUpdateSumupTransactionUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sumupTransactionUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateSumupTransactionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSumupTransaction>>, TError,{id: number;data: BodyType<SumupTransactionUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSumupTransaction>>, TError,{id: number;data: BodyType<SumupTransactionUpdate>}, TContext> => {
+
+const mutationKey = ['updateSumupTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSumupTransaction>>, {id: number;data: BodyType<SumupTransactionUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateSumupTransaction(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSumupTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof updateSumupTransaction>>>
+    export type UpdateSumupTransactionMutationBody = BodyType<SumupTransactionUpdate>
+    export type UpdateSumupTransactionMutationError = ErrorType<void>
+
+    /**
+ * @summary Update a transaction's data fields
+ */
+export const useUpdateSumupTransaction = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSumupTransaction>>, TError,{id: number;data: BodyType<SumupTransactionUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSumupTransaction>>,
+        TError,
+        {id: number;data: BodyType<SumupTransactionUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateSumupTransactionMutationOptions(options));
+    }
+
+export const getDeleteSumupTransactionUrl = (id: number,) => {
+
+
+
+
+  return `/api/sumup/transactions/${id}`
+}
+
+/**
+ * @summary Delete a single transaction
+ */
+export const deleteSumupTransaction = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteSumupTransactionUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteSumupTransactionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSumupTransaction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteSumupTransaction>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteSumupTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSumupTransaction>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteSumupTransaction(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteSumupTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSumupTransaction>>>
+
+    export type DeleteSumupTransactionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a single transaction
+ */
+export const useDeleteSumupTransaction = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSumupTransaction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteSumupTransaction>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteSumupTransactionMutationOptions(options));
+    }
+
+export const getImportSumupFromDropboxUrl = () => {
+
+
+
+
+  return `/api/sumup/import`
+}
+
+/**
+ * @summary Import Transaktionsbericht CSV from Dropbox
+ */
+export const importSumupFromDropbox = async ( options?: RequestInit): Promise<SumupImportResult> => {
+
+  return customFetch<SumupImportResult>(getImportSumupFromDropboxUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getImportSumupFromDropboxMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importSumupFromDropbox>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importSumupFromDropbox>>, TError,void, TContext> => {
+
+const mutationKey = ['importSumupFromDropbox'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importSumupFromDropbox>>, void> = () => {
+
+
+          return  importSumupFromDropbox(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportSumupFromDropboxMutationResult = NonNullable<Awaited<ReturnType<typeof importSumupFromDropbox>>>
+
+    export type ImportSumupFromDropboxMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Import Transaktionsbericht CSV from Dropbox
+ */
+export const useImportSumupFromDropbox = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importSumupFromDropbox>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importSumupFromDropbox>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getImportSumupFromDropboxMutationOptions(options));
+    }
+
+export const getExportSumupToDropboxUrl = () => {
+
+
+
+
+  return `/api/sumup/export`
+}
+
+/**
+ * @summary Export current transactions as new CSV to Dropbox
+ */
+export const exportSumupToDropbox = async ( options?: RequestInit): Promise<SumupImportResult> => {
+
+  return customFetch<SumupImportResult>(getExportSumupToDropboxUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getExportSumupToDropboxMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exportSumupToDropbox>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof exportSumupToDropbox>>, TError,void, TContext> => {
+
+const mutationKey = ['exportSumupToDropbox'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof exportSumupToDropbox>>, void> = () => {
+
+
+          return  exportSumupToDropbox(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExportSumupToDropboxMutationResult = NonNullable<Awaited<ReturnType<typeof exportSumupToDropbox>>>
+
+    export type ExportSumupToDropboxMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Export current transactions as new CSV to Dropbox
+ */
+export const useExportSumupToDropbox = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exportSumupToDropbox>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof exportSumupToDropbox>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getExportSumupToDropboxMutationOptions(options));
     }
 

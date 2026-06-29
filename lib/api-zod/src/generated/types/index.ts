@@ -7,9 +7,19 @@
  */
 
 export * from './bulkDeleteRequest';
+export * from './bulkDeleteSumupTransactions200';
 export * from './bulkDeleteVouchers200';
 export * from './healthStatus';
+export * from './listSumupTransactionsParams';
+export * from './listSumupTransactionsSortDir';
 export * from './listVouchersParams';
+export * from './sumupBulkDeleteRequest';
+export * from './sumupImportResult';
+export * from './sumupStats';
+export * from './sumupTransaction';
+export * from './sumupTransactionData';
+export * from './sumupTransactionUpdate';
+export * from './sumupTransactionUpdateData';
 export * from './syncResult';
 export * from './voucher';
 export * from './voucherInput';

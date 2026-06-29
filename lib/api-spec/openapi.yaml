@@ -13,6 +13,8 @@ tags:
     description: Voucher operations
   - name: dropbox
     description: Dropbox sync operations
+  - name: sumup
+    description: SumUp transaction operations
 paths:
   /healthz:
     get:
@@ -200,6 +202,156 @@ paths:
               schema:
                 $ref: "#/components/schemas/SyncResult"
 
+  /sumup/transactions:
+    get:
+      operationId: listSumupTransactions
+      tags: [sumup]
+      summary: List SumUp transactions with optional filter and sort
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search across all fields
+        - in: query
+          name: sortKey
+          schema:
+            type: string
+          description: Column name to sort by
+        - in: query
+          name: sortDir
+          schema:
+            type: string
+            enum: [asc, desc]
+        - in: query
+          name: filters
+          schema:
+            type: string
+          description: JSON-encoded object of column->value filters
+      responses:
+        "200":
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SumupTransaction"
+    delete:
+      operationId: bulkDeleteSumupTransactions
+      tags: [sumup]
+      summary: Delete multiple transactions by ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SumupBulkDeleteRequest"
+      responses:
+        "200":
+          description: Deleted count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: integer
+
+  /sumup/transactions/stats:
+    get:
+      operationId: getSumupStats
+      tags: [sumup]
+      summary: Get summary statistics for transactions
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SumupStats"
+
+  /sumup/transactions/columns:
+    get:
+      operationId: getSumupColumns
+      tags: [sumup]
+      summary: Get available column names from imported data
+      responses:
+        "200":
+          description: List of column names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /sumup/transactions/{id}:
+    patch:
+      operationId: updateSumupTransaction
+      tags: [sumup]
+      summary: Update a transaction's data fields
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SumupTransactionUpdate"
+      responses:
+        "200":
+          description: Updated transaction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SumupTransaction"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteSumupTransaction
+      tags: [sumup]
+      summary: Delete a single transaction
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /sumup/import:
+    post:
+      operationId: importSumupFromDropbox
+      tags: [sumup]
+      summary: Import Transaktionsbericht CSV from Dropbox
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SumupImportResult"
+
+  /sumup/export:
+    post:
+      operationId: exportSumupToDropbox
+      tags: [sumup]
+      summary: Export current transactions as new CSV to Dropbox
+      responses:
+        "200":
+          description: Export result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SumupImportResult"
+
 components:
   schemas:
     HealthStatus:
@@ -322,6 +474,75 @@ components:
         message:
           type: string
         recordsProcessed:
+          type: ["integer", "null"]
+        filename:
+          type: ["string", "null"]
+
+    SumupTransaction:
+      type: object
+      required:
+        - id
+        - data
+        - importedAt
+      properties:
+        id:
+          type: integer
+        data:
+          type: object
+          description: All CSV columns as key-value pairs
+          additionalProperties:
+            type: string
+        importedAt:
+          type: string
+
+    SumupTransactionUpdate:
+      type: object
+      properties:
+        data:
+          type: object
+          additionalProperties:
+            type: string
+
+    SumupBulkDeleteRequest:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+
+    SumupStats:
+      type: object
+      required:
+        - total
+        - totalBetrag
+        - totalGebuehr
+        - totalNetto
+        - importedAt
+      properties:
+        total:
+          type: integer
+        totalBetrag:
+          type: number
+        totalGebuehr:
+          type: number
+        totalNetto:
+          type: number
+        importedAt:
+          type: ["string", "null"]
+
+    SumupImportResult:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        recordsImported:
           type: ["integer", "null"]
         filename:
           type: ["string", "null"]

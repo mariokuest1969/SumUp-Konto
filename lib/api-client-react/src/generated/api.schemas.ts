@@ -80,6 +80,46 @@ export interface SyncResult {
   filename?: string | null;
 }
 
+/**
+ * All CSV columns as key-value pairs
+ */
+export type SumupTransactionData = {[key: string]: string};
+
+export interface SumupTransaction {
+  id: number;
+  /** All CSV columns as key-value pairs */
+  data: SumupTransactionData;
+  importedAt: string;
+}
+
+export type SumupTransactionUpdateData = {[key: string]: string};
+
+export interface SumupTransactionUpdate {
+  data?: SumupTransactionUpdateData;
+}
+
+export interface SumupBulkDeleteRequest {
+  ids: number[];
+}
+
+export interface SumupStats {
+  total: number;
+  totalBetrag: number;
+  totalGebuehr: number;
+  totalNetto: number;
+  /** @nullable */
+  importedAt: string | null;
+}
+
+export interface SumupImportResult {
+  success: boolean;
+  message: string;
+  /** @nullable */
+  recordsImported?: number | null;
+  /** @nullable */
+  filename?: string | null;
+}
+
 export type ListVouchersParams = {
 /**
  * Search by Gutscheinnummer
@@ -88,6 +128,34 @@ search?: string;
 };
 
 export type BulkDeleteVouchers200 = {
+  deleted?: number;
+};
+
+export type ListSumupTransactionsParams = {
+/**
+ * Search across all fields
+ */
+search?: string;
+/**
+ * Column name to sort by
+ */
+sortKey?: string;
+sortDir?: ListSumupTransactionsSortDir;
+/**
+ * JSON-encoded object of column->value filters
+ */
+filters?: string;
+};
+
+export type ListSumupTransactionsSortDir = typeof ListSumupTransactionsSortDir[keyof typeof ListSumupTransactionsSortDir];
+
+
+export const ListSumupTransactionsSortDir = {
+  asc: 'asc',
+  desc: 'desc',
+} as const;
+
+export type BulkDeleteSumupTransactions200 = {
   deleted?: number;
 };
 
