@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { vouchersTable } from "@workspace/db";
-import { eq, ilike, sql } from "drizzle-orm";
+import { eq, ilike, inArray, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -124,6 +124,19 @@ router.patch("/vouchers/:id", async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to update voucher" });
+  }
+});
+
+router.delete("/vouchers", async (req, res) => {
+  try {
+    const { ids } = req.body as { ids: number[] };
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "ids array required" });
+    }
+    await db.delete(vouchersTable).where(inArray(vouchersTable.id, ids));
+    res.json({ deleted: ids.length });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to bulk delete vouchers" });
   }
 });
 

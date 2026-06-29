@@ -26,6 +26,10 @@ export interface Voucher {
   updatedAt?: string;
 }
 
+export interface BulkDeleteRequest {
+  ids: number[];
+}
+
 export interface VoucherInput {
   gutscheinnummer: string;
   betrag: number;
@@ -75,5 +79,9 @@ export type ListVouchersParams = {
  * Search by Gutscheinnummer
  */
 search?: string;
+};
+
+export type BulkDeleteVouchers200 = {
+  deleted?: number;
 };
 

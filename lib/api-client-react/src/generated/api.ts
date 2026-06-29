@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BulkDeleteRequest,
+  BulkDeleteVouchers200,
   HealthStatus,
   ListVouchersParams,
   SyncResult,
@@ -217,6 +219,76 @@ export function useListVouchers<TData = Awaited<ReturnType<typeof listVouchers>>
 
 
 
+
+export const getBulkDeleteVouchersUrl = () => {
+
+
+
+
+  return `/api/vouchers`
+}
+
+/**
+ * @summary Delete multiple vouchers by ID
+ */
+export const bulkDeleteVouchers = async (bulkDeleteRequest: BulkDeleteRequest, options?: RequestInit): Promise<BulkDeleteVouchers200> => {
+
+  return customFetch<BulkDeleteVouchers200>(getBulkDeleteVouchersUrl(),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bulkDeleteRequest)
+  }
+);}
+
+
+
+
+export const getBulkDeleteVouchersMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteVouchers>>, TError,{data: BodyType<BulkDeleteRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteVouchers>>, TError,{data: BodyType<BulkDeleteRequest>}, TContext> => {
+
+const mutationKey = ['bulkDeleteVouchers'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkDeleteVouchers>>, {data: BodyType<BulkDeleteRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  bulkDeleteVouchers(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkDeleteVouchersMutationResult = NonNullable<Awaited<ReturnType<typeof bulkDeleteVouchers>>>
+    export type BulkDeleteVouchersMutationBody = BodyType<BulkDeleteRequest>
+    export type BulkDeleteVouchersMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete multiple vouchers by ID
+ */
+export const useBulkDeleteVouchers = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteVouchers>>, TError,{data: BodyType<BulkDeleteRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bulkDeleteVouchers>>,
+        TError,
+        {data: BodyType<BulkDeleteRequest>},
+        TContext
+      > => {
+      return useMutation(getBulkDeleteVouchersMutationOptions(options));
+    }
 
 export const getCreateVoucherUrl = () => {
 

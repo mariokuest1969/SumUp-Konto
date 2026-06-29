@@ -40,6 +40,18 @@ export const ListVouchersResponse = zod.array(ListVouchersResponseItem)
 
 
 /**
+ * @summary Delete multiple vouchers by ID
+ */
+export const BulkDeleteVouchersBody = zod.object({
+  "ids": zod.array(zod.number())
+})
+
+export const BulkDeleteVouchersResponse = zod.object({
+  "deleted": zod.number().optional()
+})
+
+
+/**
  * @summary Create a new voucher
  */
 export const CreateVoucherBody = zod.object({

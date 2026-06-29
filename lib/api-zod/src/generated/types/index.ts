@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './bulkDeleteRequest';
+export * from './bulkDeleteVouchers200';
 export * from './healthStatus';
 export * from './listVouchersParams';
 export * from './syncResult';

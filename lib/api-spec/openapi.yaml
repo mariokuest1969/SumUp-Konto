@@ -48,6 +48,26 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Voucher"
+    delete:
+      operationId: bulkDeleteVouchers
+      tags: [vouchers]
+      summary: Delete multiple vouchers by ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkDeleteRequest"
+      responses:
+        "200":
+          description: Deleted count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: integer
     post:
       operationId: createVoucher
       tags: [vouchers]
@@ -218,6 +238,15 @@ components:
           type: string
         updatedAt:
           type: string
+
+    BulkDeleteRequest:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
 
     VoucherInput:
       type: object
