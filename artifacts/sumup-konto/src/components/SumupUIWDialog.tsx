@@ -13,12 +13,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Landmark, FileDown } from "lucide-react";
+import { Loader2, Landmark, FileDown, Copy } from "lucide-react";
 
 export interface UIWDialogRow {
   transactionId: number;
   betrag: string;
   description: string;
+  notiz?: string;
 }
 
 interface Props {
@@ -28,22 +29,72 @@ interface Props {
 }
 
 interface RowDraft {
+  name: string;
+  iban: string;
   betrag: string;
   referenz: string;
+}
+
+function cleanIban(value: string): string {
+  return value.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+}
+
+// Parst Empfängername + IBAN aus dem Freitext der Notiz-Spalte.
+// Erkennt entweder eine kompakte IBAN (ohne Leerzeichen, per Wortgrenze
+// begrenzt) oder eine in Vierergruppen geschriebene IBAN. Der verbleibende
+// Text gilt als Name.
+function parseRecipientFromNotiz(notiz: string): { name: string; iban: string } {
+  if (!notiz || !notiz.trim()) return { name: "", iban: "" };
+
+  let raw = "";
+  let iban = "";
+
+  const compact = notiz.match(/\b[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}\b/i);
+  if (compact) {
+    raw = compact[0];
+    iban = cleanIban(raw);
+  } else {
+    const grouped = notiz.match(/\b[A-Z]{2}[0-9]{2}(?:\s[A-Z0-9]{2,4}){2,8}\b/i);
+    if (grouped) {
+      const clean = cleanIban(grouped[0]);
+      if (clean.length >= 15 && clean.length <= 34) {
+        raw = grouped[0];
+        iban = clean;
+      }
+    }
+  }
+
+  let name = raw ? notiz.replace(raw, " ") : notiz;
+  name = name
+    .replace(/\bIBAN\b\s*:?/i, "")
+    .replace(/[;,|]+/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return { name, iban };
 }
 
 export function SumupUIWDialog({ open, onOpenChange, rows }: Props) {
   const { toast } = useToast();
   const [empfaengertyp, setEmpfaengertyp] = useState<"Privatperson" | "Geschäft">("Privatperson");
-  const [name, setName] = useState("");
   const [land, setLand] = useState("DE");
-  const [iban, setIban] = useState("");
+  const [sharedName, setSharedName] = useState("");
+  const [sharedIban, setSharedIban] = useState("");
   const [rowDrafts, setRowDrafts] = useState<RowDraft[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setRowDrafts(rows.map(r => ({ betrag: r.betrag, referenz: "" })));
+    setRowDrafts(rows.map(r => {
+      const { name, iban } = parseRecipientFromNotiz(r.notiz ?? "");
+      return {
+        name,
+        iban,
+        betrag: r.betrag,
+        referenz: r.description || "",
+      };
+    }));
+    setSharedName("");
+    setSharedIban("");
   }, [open, rows]);
 
   const isSingle = rows.length === 1;
@@ -52,18 +103,25 @@ export function SumupUIWDialog({ open, onOpenChange, rows }: Props) {
     setRowDrafts(prev => prev.map((d, i) => i === idx ? { ...d, [field]: val } : d));
   };
 
+  const applyToAll = () => {
+    setRowDrafts(prev => prev.map(d => ({ ...d, name: sharedName, iban: sharedIban })));
+    toast({ title: `Empfänger auf ${rows.length} Zeile(n) übernommen` });
+  };
+
   const handleSave = async () => {
-    if (!name.trim()) { toast({ title: "Name fehlt", variant: "destructive" }); return; }
-    const ibanClean = iban.replace(/\s+/g, "");
-    if (!ibanClean) { toast({ title: "IBAN fehlt", variant: "destructive" }); return; }
+    const missing = rowDrafts.findIndex(d => !d.name.trim() || !cleanIban(d.iban));
+    if (missing !== -1) {
+      toast({ title: `Zeile ${missing + 1}: Name oder IBAN fehlt`, variant: "destructive" });
+      return;
+    }
 
     setSaving(true);
     try {
       const payload = rowDrafts.map((d, i) => ({
         empfaengertyp,
-        name: name.trim(),
+        name: d.name.trim(),
         land: land.trim().toUpperCase().slice(0, 2) || "DE",
-        iban: ibanClean,
+        iban: cleanIban(d.iban),
         betrag: d.betrag,
         referenz: d.referenz.trim() || rows[i]?.description || "",
       }));
@@ -87,7 +145,7 @@ export function SumupUIWDialog({ open, onOpenChange, rows }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Landmark className="w-5 h-5" />
@@ -96,15 +154,14 @@ export function SumupUIWDialog({ open, onOpenChange, rows }: Props) {
           <DialogDescription>
             {isSingle
               ? "Empfängerdaten eingeben und als UIW.csv in Dropbox speichern."
-              : `Gemeinsame Empfängerdaten für ${rows.length} Transaktionen eingeben.`}
+              : `${rows.length} Transaktionen ausgewählt — Empfänger pro Zeile eingeben oder gemeinsam übernehmen.`}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 py-2">
-          {/* Shared recipient fields */}
+          {/* Empfängertyp + Land (gilt für alle Zeilen) */}
           <div className="space-y-3">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Empfänger</div>
-
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Allgemein</div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Empfängertyp</Label>
@@ -129,46 +186,90 @@ export function SumupUIWDialog({ open, onOpenChange, rows }: Props) {
                 />
               </div>
             </div>
-
-            <div className="space-y-1.5">
-              <Label>
-                {empfaengertyp === "Privatperson" ? "Name (Vorname Nachname)" : "Geschäftsname"}
-              </Label>
-              <Input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder={empfaengertyp === "Privatperson" ? "Julia Schumann" : "Evas Keksfabrik GmbH"}
-                autoFocus
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>IBAN</Label>
-              <Input
-                value={iban}
-                onChange={e => setIban(e.target.value.replace(/[^A-Z0-9a-z ]/g, "").toUpperCase())}
-                placeholder="DE00 0000 0000 0000 0000 00"
-                className="font-mono tracking-wider"
-              />
-            </div>
           </div>
+
+          {/* Schnellausfüllen: gleicher Empfänger für alle Zeilen */}
+          {!isSingle && (
+            <>
+              <Separator />
+              <div className="space-y-3 rounded-md border border-dashed p-3">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Gleicher Empfänger für alle Zeilen
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">
+                      {empfaengertyp === "Privatperson" ? "Name" : "Geschäftsname"}
+                    </Label>
+                    <Input
+                      value={sharedName}
+                      onChange={e => setSharedName(e.target.value)}
+                      placeholder={empfaengertyp === "Privatperson" ? "Julia Schumann" : "Evas Keksfabrik GmbH"}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">IBAN</Label>
+                    <Input
+                      value={sharedIban}
+                      onChange={e => setSharedIban(e.target.value.replace(/[^A-Za-z0-9 ]/g, "").toUpperCase())}
+                      placeholder="DE00 0000 0000 0000 0000 00"
+                      className="h-8 text-sm font-mono tracking-wider"
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={applyToAll}
+                  disabled={!sharedName.trim() && !sharedIban.trim()}
+                >
+                  <Copy className="w-3.5 h-3.5 mr-1.5" />
+                  Auf alle Zeilen anwenden
+                </Button>
+              </div>
+            </>
+          )}
 
           <Separator />
 
-          {/* Per-row betrag + referenz */}
+          {/* Pro Zeile: Empfänger + Betrag + Referenz */}
           <div className="space-y-3">
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {isSingle ? "Transaktion" : `Transaktionen (${rows.length})`}
+              {isSingle ? "Empfänger & Transaktion" : `Zeilen (${rows.length})`}
             </div>
 
             <div className="space-y-2">
               {rows.map((row, idx) => (
-                <div key={row.transactionId} className={`rounded-md border p-3 space-y-2 ${rows.length > 1 ? "bg-muted/30" : ""}`}>
-                  {rows.length > 1 && (
+                <div key={row.transactionId} className={`rounded-md border p-3 space-y-2 ${!isSingle ? "bg-muted/30" : ""}`}>
+                  {!isSingle && (
                     <div className="text-xs text-muted-foreground truncate" title={row.description}>
-                      {row.description}
+                      {idx + 1}. {row.description}
                     </div>
                   )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">
+                        {empfaengertyp === "Privatperson" ? "Name" : "Geschäftsname"}
+                      </Label>
+                      <Input
+                        value={rowDrafts[idx]?.name ?? ""}
+                        onChange={e => updateDraft(idx, "name", e.target.value)}
+                        className="h-8 text-sm"
+                        placeholder={empfaengertyp === "Privatperson" ? "Julia Schumann" : "Evas Keksfabrik GmbH"}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">IBAN</Label>
+                      <Input
+                        value={rowDrafts[idx]?.iban ?? ""}
+                        onChange={e => updateDraft(idx, "iban", e.target.value.replace(/[^A-Za-z0-9 ]/g, "").toUpperCase())}
+                        className="h-8 text-sm font-mono tracking-wider"
+                        placeholder="DE00 0000 0000 0000 0000 00"
+                      />
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Betrag (EUR)</Label>
@@ -202,7 +303,7 @@ export function SumupUIWDialog({ open, onOpenChange, rows }: Props) {
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Abbrechen</Button>
-          <Button onClick={handleSave} disabled={saving || !name.trim() || !iban.trim()}>
+          <Button onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Landmark className="w-4 h-4 mr-1.5" />}
             In Dropbox speichern
           </Button>

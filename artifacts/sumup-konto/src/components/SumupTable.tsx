@@ -150,15 +150,15 @@ export function SumupTable() {
     );
   };
 
-  const openUIWForRow = (tx: { id: number; data: Record<string, string> }) => {
-    setUiwRows([{ transactionId: tx.id, betrag: extractBetrag(tx.data), description: extractDescription(tx.data) }]);
+  const openUIWForRow = (tx: { id: number; data: Record<string, string>; notiz?: string | null }) => {
+    setUiwRows([{ transactionId: tx.id, betrag: extractBetrag(tx.data), description: extractDescription(tx.data), notiz: tx.notiz ?? "" }]);
     setUiwOpen(true);
   };
 
   const openUIWForSelected = () => {
     const rows: UIWDialogRow[] = transactions
       .filter(tx => selectedIds.has(tx.id))
-      .map(tx => ({ transactionId: tx.id, betrag: extractBetrag(tx.data), description: extractDescription(tx.data) }));
+      .map(tx => ({ transactionId: tx.id, betrag: extractBetrag(tx.data), description: extractDescription(tx.data), notiz: tx.notiz ?? "" }));
     if (!rows.length) return;
     setUiwRows(rows);
     setUiwOpen(true);

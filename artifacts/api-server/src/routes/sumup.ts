@@ -265,8 +265,14 @@ router.post("/sumup/uiw-export", async (req, res) => {
     const { rows } = req.body as { rows: UIWRow[] };
     if (!Array.isArray(rows) || rows.length === 0) return res.status(400).json({ success: false, message: "Keine Zeilen übergeben." });
 
+    const esc = (v: string) => {
+      const s = (v ?? "").replace(/[\r\n]+/g, " ");
+      return s.includes(";") || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+    };
     const csvLines = rows.map(r =>
-      [r.empfaengertyp, r.name, r.land, r.iban.replace(/\s+/g, ""), r.betrag, r.referenz ?? ""].join(";")
+      [r.empfaengertyp, r.name, r.land, r.iban.replace(/\s+/g, ""), r.betrag, r.referenz ?? ""]
+        .map(esc)
+        .join(";")
     );
     const csvContent = [UIW_HEADER, ...csvLines].join("\n");
     // No BOM — plain UTF-8
