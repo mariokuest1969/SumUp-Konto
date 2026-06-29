@@ -85,7 +85,7 @@ function parseNum(v: string): number {
   return parseFloat(v.replace(",", ".").replace(/[^\d.\-]/g, "")) || 0;
 }
 
-const SALDO_KEYS = ["Kontostand", "Saldo", "Balance", "Guthaben"];
+const SALDO_KEYS = ["Verfügbarer Betrag", "Verfuegbarer Betrag", "Kontostand", "Saldo", "Balance", "Guthaben"];
 const DATE_KEYS = ["Datum der Transaktion", "Datum", "Date", "Transaktionsdatum"];
 const TIME_KEYS = ["Uhrzeit der Transaktion", "Uhrzeit", "Zeit", "Time"];
 
@@ -182,9 +182,9 @@ router.get("/sumup/transactions/stats", async (_req, res) => {
 
       if (lastColKey) {
         const sorted = [...data].sort((a, b) => {
-          const aStr = (dateKey ? a[dateKey] : "") + " " + (timeKey ? a[timeKey] : "");
-          const bStr = (dateKey ? b[dateKey] : "") + " " + (timeKey ? b[timeKey] : "");
-          return bStr.localeCompare(aStr, "de");
+          const aStr = toSortableDate(dateKey ? a[dateKey] : "") + " " + (timeKey ? a[timeKey] : "");
+          const bStr = toSortableDate(dateKey ? b[dateKey] : "") + " " + (timeKey ? b[timeKey] : "");
+          return bStr.localeCompare(aStr);
         });
         currentSaldo = parseNum(sorted[0][lastColKey]);
       }
