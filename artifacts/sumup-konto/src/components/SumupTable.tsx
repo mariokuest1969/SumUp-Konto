@@ -94,26 +94,44 @@ export function SumupTable() {
     } catch { return {}; }
   });
 
-  const startResize = useCallback((col: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = columnWidths[col] || 140;
-    const onMove = (mv: MouseEvent) => {
-      const newWidth = Math.max(60, startWidth + mv.clientX - startX);
+  const resizingRef = useRef<{ col: string; startX: number; startWidth: number } | null>(null);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const { col, startX, startWidth } = resizingRef.current;
+      const newWidth = Math.max(60, startWidth + e.clientX - startX);
       setColumnWidths(prev => ({ ...prev, [col]: newWidth }));
     };
-    const onUp = (mv: MouseEvent) => {
-      const newWidth = Math.max(60, startWidth + mv.clientX - startX);
+    const onUp = (e: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const { col, startX, startWidth } = resizingRef.current;
+      const newWidth = Math.max(60, startWidth + e.clientX - startX);
       setColumnWidths(prev => {
         const next = { ...prev, [col]: newWidth };
         localStorage.setItem("sumup-column-widths", JSON.stringify(next));
         return next;
       });
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
+      resizingRef.current = null;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
     };
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  const startResize = useCallback((col: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const th = (e.currentTarget as HTMLElement).parentElement;
+    const startWidth = th?.offsetWidth ?? columnWidths[col] ?? 140;
+    resizingRef.current = { col, startX: e.clientX, startWidth };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
   }, [columnWidths]);
 
   const moveColumn = (col: string, dir: -1 | 1, base: string[]) => {
