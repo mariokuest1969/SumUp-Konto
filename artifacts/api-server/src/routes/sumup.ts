@@ -89,6 +89,14 @@ const SALDO_KEYS = ["Kontostand", "Saldo", "Balance", "Guthaben"];
 const DATE_KEYS = ["Datum der Transaktion", "Datum", "Date", "Transaktionsdatum"];
 const TIME_KEYS = ["Uhrzeit der Transaktion", "Uhrzeit", "Zeit", "Time"];
 
+// Convert DD.MM.YYYY[ HH:MM:SS] → YYYY-MM-DD[ HH:MM:SS] for correct chronological sort.
+// Falls back to original string for other formats (ISO dates already sort correctly).
+function toSortableDate(raw: string): string {
+  const m = raw.trim().match(/^(\d{2})\.(\d{2})\.(\d{4})(.*)/);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}${m[4]}`;
+  return raw;
+}
+
 router.get("/sumup/transactions", async (req, res) => {
   try {
     const { search, sortKey, sortDir, filters: filtersStr } = req.query as Record<string, string>;
@@ -124,9 +132,11 @@ router.get("/sumup/transactions", async (req, res) => {
     }
 
     if (sortKey) {
+      const isDateCol = DATE_KEYS.includes(sortKey);
       result.sort((a, b) => {
-        const av = a.data[sortKey] ?? "";
-        const bv = b.data[sortKey] ?? "";
+        let av = a.data[sortKey] ?? "";
+        let bv = b.data[sortKey] ?? "";
+        if (isDateCol) { av = toSortableDate(av); bv = toSortableDate(bv); }
         const cmp = av.localeCompare(bv, "de", { numeric: true });
         return sortDir === "desc" ? -cmp : cmp;
       });
