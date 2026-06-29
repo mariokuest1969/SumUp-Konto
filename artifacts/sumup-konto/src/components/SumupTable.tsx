@@ -282,6 +282,13 @@ export function SumupTable() {
     });
   };
 
+  const sortedColumns = React.useMemo(() => {
+    if (!columnOrder.length) return columns;
+    const inOrder = columnOrder.filter(c => columns.includes(c));
+    const rest = columns.filter(c => !columnOrder.includes(c));
+    return [...inOrder, ...rest];
+  }, [columns, columnOrder]);
+
   if (!isLoadingColumns && columns.length === 0 && (!stats || stats.total === 0)) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center border rounded-lg bg-card text-muted-foreground border-dashed">
@@ -295,13 +302,6 @@ export function SumupTable() {
       </div>
     );
   }
-
-  const sortedColumns = React.useMemo(() => {
-    if (!columnOrder.length) return columns;
-    const inOrder = columnOrder.filter(c => columns.includes(c));
-    const rest = columns.filter(c => !columnOrder.includes(c));
-    return [...inOrder, ...rest];
-  }, [columns, columnOrder]);
 
   const visibleColumns = sortedColumns.filter(col => !hiddenColumns.has(col));
   const allSelected = transactions.length > 0 && selectedIds.size === transactions.length;
