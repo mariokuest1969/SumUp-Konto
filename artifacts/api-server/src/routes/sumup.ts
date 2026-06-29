@@ -278,8 +278,9 @@ const UIW_HEADER = "Empfängertyp;Privatperson oder Geschäftsname;Land des Wohn
 
 router.post("/sumup/uiw-export", async (req, res) => {
   try {
-    const token = await getStoredToken();
-    if (!token) return res.status(400).json({ success: false, message: "Kein Dropbox-Token gespeichert." });
+    const rawToken = await getStoredToken();
+    if (!rawToken) return res.status(400).json({ success: false, message: "Kein Dropbox-Token gespeichert." });
+    const token = rawToken.trim();
 
     interface UIWRow { empfaengertyp: string; name: string; land: string; iban: string; betrag: string; referenz?: string }
     const { rows } = req.body as { rows: UIWRow[] };
@@ -295,33 +296,35 @@ router.post("/sumup/uiw-export", async (req, res) => {
         .join(";")
     );
     const csvContent = [UIW_HEADER, ...csvLines].join("\n");
-    // No BOM — plain UTF-8
-    const fileBuffer = Buffer.from(csvContent, "utf-8");
 
-    const exportFolder = (await getExportPath()) ?? DEFAULT_FOLDER;
+    const exportFolder = ((await getExportPath()) ?? DEFAULT_FOLDER).trimEnd().replace(/\/+$/, "");
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
     const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
     const uiwFilename = `UIW_${timestamp}.csv`;
     const dropboxPath = `${exportFolder}/${uiwFilename}`;
 
-    // Use direct upload (simpler and more reliable than temporary upload link)
+    const apiArg = JSON.stringify({ path: dropboxPath, mode: "add", autorename: true });
+    console.log("[UIW-export] path:", dropboxPath, "token_prefix:", token.slice(0, 12));
+
     const uploadRes = await fetch("https://content.dropboxapi.com/2/files/upload", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/octet-stream",
-        "Dropbox-API-Arg": JSON.stringify({ path: dropboxPath, mode: "add", autorename: true }),
+        "Dropbox-API-Arg": apiArg,
       },
-      body: fileBuffer,
+      body: csvContent,
     });
+    const responseText = await uploadRes.text();
     if (!uploadRes.ok) {
-      const detail = await uploadRes.text();
-      return res.status(502).json({ success: false, message: `Dropbox-Upload fehlgeschlagen (${uploadRes.status}): ${detail || uploadRes.statusText}` });
+      console.error("[UIW-export] Dropbox error", uploadRes.status, responseText);
+      return res.status(502).json({ success: false, message: `Dropbox-Upload fehlgeschlagen (${uploadRes.status}): ${responseText || uploadRes.statusText}` });
     }
 
     res.json({ success: true, message: `${uiwFilename} mit ${rows.length} Zeile(n) in Dropbox gespeichert.`, filename: uiwFilename });
   } catch (err) {
+    console.error("[UIW-export] Exception:", err);
     res.status(500).json({ success: false, message: String(err) });
   }
 });
