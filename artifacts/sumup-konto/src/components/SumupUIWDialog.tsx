@@ -20,6 +20,7 @@ export interface UIWDialogRow {
   betrag: string;
   description: string;
   notiz?: string;
+  transactionReferenz?: string;
 }
 
 interface Props {
@@ -39,22 +40,22 @@ function cleanIban(value: string): string {
   return value.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 }
 
-// Parst Empfängername + IBAN aus dem Freitext der Notiz-Spalte.
-// Erkennt entweder eine kompakte IBAN (ohne Leerzeichen, per Wortgrenze
-// begrenzt) oder eine in Vierergruppen geschriebene IBAN. Der verbleibende
-// Text gilt als Name.
-function parseRecipientFromNotiz(notiz: string): { name: string; iban: string } {
-  if (!notiz || !notiz.trim()) return { name: "", iban: "" };
+// Parst Empfängername + IBAN aus einem Freitext-String.
+// Erkennt entweder eine kompakte IBAN (ohne Leerzeichen) oder eine in
+// Vierergruppen geschriebene IBAN. Der verbleibende Text gilt als Name.
+// Wenn notiz keine IBAN enthält, wird transactionReferenz als Fallback versucht.
+function parseFromText(text: string): { name: string; iban: string } {
+  if (!text || !text.trim()) return { name: "", iban: "" };
 
   let raw = "";
   let iban = "";
 
-  const compact = notiz.match(/\b[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}\b/i);
+  const compact = text.match(/\b[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}\b/i);
   if (compact) {
     raw = compact[0];
     iban = cleanIban(raw);
   } else {
-    const grouped = notiz.match(/\b[A-Z]{2}[0-9]{2}(?:\s[A-Z0-9]{2,4}){2,8}\b/i);
+    const grouped = text.match(/\b[A-Z]{2}[0-9]{2}(?:\s[A-Z0-9]{2,4}){2,8}\b/i);
     if (grouped) {
       const clean = cleanIban(grouped[0]);
       if (clean.length >= 15 && clean.length <= 34) {
@@ -64,13 +65,24 @@ function parseRecipientFromNotiz(notiz: string): { name: string; iban: string } 
     }
   }
 
-  let name = raw ? notiz.replace(raw, " ") : notiz;
+  let name = raw ? text.replace(raw, " ") : text;
   name = name
     .replace(/\bIBAN\b\s*:?/i, "")
     .replace(/[;,|]+/g, " ")
     .replace(/\s{2,}/g, " ")
     .trim();
   return { name, iban };
+}
+
+function parseRecipientFromNotiz(notiz: string, referenz?: string): { name: string; iban: string } {
+  const fromNotiz = parseFromText(notiz ?? "");
+  if (fromNotiz.iban) return fromNotiz;
+  if (referenz) {
+    const fromRef = parseFromText(referenz);
+    if (fromRef.iban) return fromRef;
+    if (!fromNotiz.name && fromRef.name) return fromRef;
+  }
+  return fromNotiz;
 }
 
 export function SumupUIWDialog({ open, onOpenChange, rows }: Props) {
@@ -85,7 +97,7 @@ export function SumupUIWDialog({ open, onOpenChange, rows }: Props) {
   useEffect(() => {
     if (!open) return;
     setRowDrafts(rows.map(r => {
-      const { name, iban } = parseRecipientFromNotiz(r.notiz ?? "");
+      const { name, iban } = parseRecipientFromNotiz(r.notiz ?? "", r.transactionReferenz);
       return {
         name,
         iban,

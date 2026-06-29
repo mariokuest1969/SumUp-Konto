@@ -235,15 +235,22 @@ export function SumupTable() {
     );
   };
 
+  const REFERENZ_KEYS = ["Referenz", "Reference", "Zahlungsreferenz", "Verwendungszweck"];
+
+  const getTransactionReferenz = (data: Record<string, string>): string => {
+    const key = REFERENZ_KEYS.find(k => k in data && data[k]);
+    return key ? data[key] : "";
+  };
+
   const openUIWForRow = (tx: { id: number; data: Record<string, string>; notiz?: string | null }) => {
-    setUiwRows([{ transactionId: tx.id, betrag: extractBetrag(tx.data), description: extractDescription(tx.data), notiz: tx.notiz ?? "" }]);
+    setUiwRows([{ transactionId: tx.id, betrag: extractBetrag(tx.data), description: extractDescription(tx.data), notiz: tx.notiz ?? "", transactionReferenz: getTransactionReferenz(tx.data) }]);
     setUiwOpen(true);
   };
 
   const openUIWForSelected = () => {
     const rows: UIWDialogRow[] = transactions
       .filter(tx => selectedIds.has(tx.id))
-      .map(tx => ({ transactionId: tx.id, betrag: extractBetrag(tx.data), description: extractDescription(tx.data), notiz: tx.notiz ?? "" }));
+      .map(tx => ({ transactionId: tx.id, betrag: extractBetrag(tx.data), description: extractDescription(tx.data), notiz: tx.notiz ?? "", transactionReferenz: getTransactionReferenz(tx.data) }));
     if (!rows.length) return;
     setUiwRows(rows);
     setUiwOpen(true);
