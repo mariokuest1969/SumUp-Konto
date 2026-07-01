@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Landmark, FileDown, Copy } from "lucide-react";
+import { Loader2, Landmark, FileDown, Copy, Download } from "lucide-react";
 
 export interface UIWDialogRow {
   transactionId: number;
@@ -121,23 +121,65 @@ export function SumupUIWDialog({ open, onOpenChange, rows }: Props) {
     toast({ title: `Empfänger auf ${rows.length} Zeile(n) übernommen` });
   };
 
-  const handleSave = async () => {
+  const UIW_HEADER = "Empfängertyp;Privatperson oder Geschäftsname;Land des Wohnsitzes oder der Registrierung (2-Buchstaben-Code);IBAN;Betrag (EUR);Referenz (optional)";
+
+  const esc = (v: string) => {
+    const s = (v ?? "").replace(/[\r\n]+/g, " ");
+    return s.includes(";") || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  const buildPayload = () => rowDrafts.map((d, i) => ({
+    empfaengertyp,
+    name: d.name.trim(),
+    land: land.trim().toUpperCase().slice(0, 2) || "DE",
+    iban: cleanIban(d.iban),
+    betrag: d.betrag,
+    referenz: d.referenz.trim() || rows[i]?.description || "",
+  }));
+
+  const buildCsvContent = (payload: ReturnType<typeof buildPayload>) => {
+    const lines = payload.map(r =>
+      [r.empfaengertyp, r.name, r.land, r.iban, r.betrag, r.referenz].map(esc).join(";")
+    );
+    return [UIW_HEADER, ...lines].join("\n");
+  };
+
+  const validate = () => {
     const missing = rowDrafts.findIndex(d => !d.name.trim() || !cleanIban(d.iban));
     if (missing !== -1) {
       toast({ title: `Zeile ${missing + 1}: Name oder IBAN fehlt`, variant: "destructive" });
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const handleDownload = () => {
+    if (!validate()) return;
+    const payload = buildPayload();
+    const csv = buildCsvContent(payload);
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+    const filename = `UIW_${timestamp}.csv`;
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: "Download gestartet", description: filename });
+  };
+
+  const handleSave = async () => {
+    if (!validate()) return;
 
     setSaving(true);
     try {
-      const payload = rowDrafts.map((d, i) => ({
-        empfaengertyp,
-        name: d.name.trim(),
-        land: land.trim().toUpperCase().slice(0, 2) || "DE",
-        iban: cleanIban(d.iban),
-        betrag: d.betrag,
-        referenz: d.referenz.trim() || rows[i]?.description || "",
-      }));
+      const payload = buildPayload();
 
       const res = await fetch(`/api/sumup/uiw-export`, {
         method: "POST",
@@ -310,12 +352,16 @@ export function SumupUIWDialog({ open, onOpenChange, rows }: Props) {
 
           <div className="flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             <FileDown className="w-3.5 h-3.5 shrink-0" />
-            Wird als <code className="font-mono mx-1">UIW_YYYYMMDD_HHMM.csv</code> ohne BOM in den Dropbox-Export-Pfad gespeichert.
+            Dateiname: <code className="font-mono mx-1">UIW_YYYYMMDD_HHMM.csv</code> — direkt herunterladen oder in Dropbox speichern.
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 flex-wrap">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Abbrechen</Button>
+          <Button variant="secondary" onClick={handleDownload} disabled={saving}>
+            <Download className="w-4 h-4 mr-1.5" />
+            Herunterladen
+          </Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Landmark className="w-4 h-4 mr-1.5" />}
             In Dropbox speichern
