@@ -13,7 +13,8 @@ import { SumupTable } from "@/components/SumupTable";
 import { SumupStatsCard } from "@/components/SumupStatsCard";
 import { SumupSettingsDialog } from "@/components/SumupSettingsDialog";
 import { useToast } from "@/hooks/use-toast";
-import { CloudDownload, CloudUpload, Loader2, Settings, LogOut } from "lucide-react";
+import { CloudDownload, CloudUpload, Loader2, Settings, LogOut, Users } from "lucide-react";
+import { UserManagementDialog } from "@/components/UserManagementDialog";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -23,6 +24,7 @@ export default function Home() {
   const { signOut } = useClerk();
   const { user } = useUser();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [usersOpen, setUsersOpen] = useState(false);
 
   const importMutation = useImportSumupFromDropbox();
   const exportMutation = useExportSumupToDropbox();
@@ -97,6 +99,14 @@ export default function Home() {
             <Button
               variant="ghost"
               size="icon"
+              onClick={() => setUsersOpen(true)}
+              title="Benutzerverwaltung"
+            >
+              <Users className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setSettingsOpen(true)}
               title="Einstellungen"
             >
@@ -136,6 +146,7 @@ export default function Home() {
       </main>
 
       <SumupSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <UserManagementDialog open={usersOpen} onOpenChange={setUsersOpen} />
     </div>
   );
 }
