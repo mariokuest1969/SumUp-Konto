@@ -12,7 +12,7 @@ import Home from "@/pages/home";
 
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ?? "",
 );
 
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
