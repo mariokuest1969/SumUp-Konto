@@ -52,7 +52,7 @@ if (process.env.NODE_ENV === "production") {
   const frontendDir = path.resolve(process.cwd(), "artifacts/sumup-konto/dist/public");
   if (fs.existsSync(frontendDir)) {
     app.use(express.static(frontendDir));
-    app.get("*", (_req, res) => {
+    app.get("/{*path}", (_req, res) => {
       res.sendFile(path.join(frontendDir, "index.html"));
     });
   }
