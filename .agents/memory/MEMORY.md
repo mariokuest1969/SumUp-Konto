@@ -1,4 +1,5 @@
 - [API routing](api-routing.md) — web artifacts must fetch the shared API at root-relative `/api/...`, not `${BASE_URL}api/...` (latter hits Vite SPA fallback → JSON parse error).
 - [PWA setup](pwa-setup.md) — installable web apps use vite-plugin-pwa (autoUpdate); for subpath artifacts set manifest start_url+scope to BASE_PATH; SW only active in production build, not dev.
 - [UIW export & prefill](uiw-export.md) — UIW dialog: Referenz←description, Name/IBAN←parsed from Notiz free-text; per-row editable lines; export CSV fields MUST be escaped (free text → `;`-joined).
+- [Clerk auth setup](clerk-auth-setup.md) — Clerk auth active on sumup-konto; email+password + Google; queryClient moved to src/lib/queryClient.ts; Tailwind v4 needs optimize:false + @layer clerk before @import tailwindcss.
 - [Deployment visibility](deployment-visibility.md) — Password protection / visibility setting is under "Adjust settings" in the Replit Publishing UI, not in the main publish dialog.

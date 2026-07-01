@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useClerk, useUser } from "@clerk/react";
 import {
   useImportSumupFromDropbox,
   useExportSumupToDropbox,
@@ -12,11 +13,15 @@ import { SumupTable } from "@/components/SumupTable";
 import { SumupStatsCard } from "@/components/SumupStatsCard";
 import { SumupSettingsDialog } from "@/components/SumupSettingsDialog";
 import { useToast } from "@/hooks/use-toast";
-import { CloudDownload, CloudUpload, Loader2, Settings } from "lucide-react";
+import { CloudDownload, CloudUpload, Loader2, Settings, LogOut } from "lucide-react";
+
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function Home() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { signOut } = useClerk();
+  const { user } = useUser();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const importMutation = useImportSumupFromDropbox();
@@ -97,6 +102,21 @@ export default function Home() {
             >
               <Settings className="w-5 h-5" />
             </Button>
+            <div className="flex items-center gap-2 pl-2 border-l border-border ml-1">
+              {user?.primaryEmailAddress && (
+                <span className="text-sm text-muted-foreground hidden sm:block max-w-[160px] truncate" title={user.primaryEmailAddress.emailAddress}>
+                  {user.primaryEmailAddress.emailAddress}
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Abmelden"
+                onClick={() => signOut({ redirectUrl: basePath || "/" })}
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>

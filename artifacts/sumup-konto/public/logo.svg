@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 40" fill="none">
+  <rect width="36" height="36" x="2" y="2" rx="8" fill="#FF3C00"/>
+  <text x="20" y="25" font-family="system-ui,sans-serif" font-size="18" font-weight="700" fill="white" text-anchor="middle">S</text>
+  <text x="54" y="26" font-family="system-ui,sans-serif" font-size="15" font-weight="700" fill="#1a1a1a">SumUp</text>
+  <text x="100" y="26" font-family="system-ui,sans-serif" font-size="15" font-weight="400" fill="#666">Konto</text>
+</svg>
