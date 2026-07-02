@@ -84,8 +84,9 @@ export function SumupSettingsDialog({ open, onOpenChange }: Props) {
       setTokenStatus({ set: true, masked: newToken.slice(0, 4) + "••••••••" + newToken.slice(-4) });
       setNewToken("");
       toast({ title: data.set ? "Token aktualisiert" : "Token gelöscht" });
-    } catch {
-      toast({ title: "Fehler beim Speichern des Tokens", variant: "destructive" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({ title: "Fehler beim Speichern des Tokens", description: msg, variant: "destructive" });
     } finally {
       setSavingToken(false);
     }
