@@ -407,9 +407,10 @@ router.post("/sumup/import", async (_req, res) => {
     }
 
     const skipped = rows.length - newRows.length;
+    const fileInfo = `Datei: ${csvFile.name} (${rows.length} Zeilen gesamt)`;
     const msg = newRows.length > 0
-      ? `${newRows.length} neue Transaktionen importiert${skipped > 0 ? `, ${skipped} bereits vorhanden (übersprungen)` : ""}.`
-      : `Keine neuen Transaktionen — alle ${skipped} Einträge bereits vorhanden.`;
+      ? `${newRows.length} neue Transaktionen importiert${skipped > 0 ? `, ${skipped} bereits vorhanden (übersprungen)` : ""}. ${fileInfo}`
+      : `Keine neuen Transaktionen — alle ${skipped} Einträge bereits vorhanden. ${fileInfo}`;
 
     res.json({ success: true, message: msg, recordsImported: newRows.length, filename: csvFile.name });
   } catch (err) {
