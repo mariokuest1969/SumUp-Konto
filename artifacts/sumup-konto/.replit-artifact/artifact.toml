@@ -22,6 +22,11 @@ build = [ "pnpm", "--filter", "@workspace/sumup-konto", "run", "build" ]
 publicDir = "artifacts/sumup-konto/dist/public"
 serve = "static"
 
+[services.production.buildEnv]
+VITE_CLERK_PUBLISHABLE_KEY = "$VITE_CLERK_PUBLISHABLE_KEY"
+VITE_CLERK_PROXY_URL = "$VITE_CLERK_PROXY_URL"
+BASE_PATH = "/"
+
 [[services.production.rewrites]]
 from = "/*"
 to = "/index.html"
