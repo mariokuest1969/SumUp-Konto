@@ -379,8 +379,17 @@ router.post("/sumup/import", async (_req, res) => {
     const allFileNames = entries.filter(e => e[".tag"] === "file").map(e => e.name);
     const csvFiles = entries.filter((e) => e[".tag"] === "file" && e.name.toLowerCase().startsWith("transaktionsbericht") && e.name.toLowerCase().endsWith(".csv"));
     if (!csvFiles.length) return res.status(404).json({ success: false, message: `Keine Transaktionsbericht-CSV-Datei in "${importFolder}" gefunden. Vorhandene Dateien: ${allFileNames.length ? allFileNames.join(", ") : "(leer)"}` });
-    // Immer die neueste Datei laden (nach server_modified absteigend sortiert)
+    // Datum aus dem Dateinamen extrahieren (letzte 8 Zeichen vor .csv, Format YYYYMMDD)
+    const getFilenameDate = (name: string): string => {
+      const base = name.slice(0, -4); // remove .csv
+      const last8 = base.slice(-8);
+      return /^\d{8}$/.test(last8) ? last8 : "00000000";
+    };
+    // Nach Datum im Dateinamen sortieren (neuestes zuerst), Fallback auf server_modified
     const csvFile = csvFiles.sort((a, b) => {
+      const da = getFilenameDate(a.name);
+      const db2 = getFilenameDate(b.name);
+      if (da !== db2) return db2.localeCompare(da);
       const ta = a.server_modified ? new Date(a.server_modified).getTime() : 0;
       const tb = b.server_modified ? new Date(b.server_modified).getTime() : 0;
       return tb - ta;
