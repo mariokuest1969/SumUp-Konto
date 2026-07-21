@@ -336,10 +336,16 @@ router.post("/sumup/import", async (_req, res) => {
 
     const importFolder = (await getImportPath()) ?? DEFAULT_FOLDER;
     const listRes = await dropboxApiCall(token, "/2/files/list_folder", { path: importFolder, recursive: false });
-    const listData = await listRes.json() as { entries?: Array<{ name: string; path_lower: string; ".tag": string }> };
+    const listData = await listRes.json() as { entries?: Array<{ name: string; path_lower: string; ".tag": string; server_modified?: string }> };
     const entries = listData.entries ?? [];
-    const csvFile = entries.find((e) => e[".tag"] === "file" && e.name.toLowerCase().startsWith("transaktionsbericht") && e.name.toLowerCase().endsWith(".csv"));
-    if (!csvFile) return res.status(404).json({ success: false, message: "Keine Transaktionsbericht-CSV-Datei in /Apps/roc.kasse gefunden." });
+    const csvFiles = entries.filter((e) => e[".tag"] === "file" && e.name.toLowerCase().startsWith("transaktionsbericht") && e.name.toLowerCase().endsWith(".csv"));
+    if (!csvFiles.length) return res.status(404).json({ success: false, message: "Keine Transaktionsbericht-CSV-Datei gefunden." });
+    // Immer die neueste Datei laden (nach server_modified absteigend sortiert)
+    const csvFile = csvFiles.sort((a, b) => {
+      const ta = a.server_modified ? new Date(a.server_modified).getTime() : 0;
+      const tb = b.server_modified ? new Date(b.server_modified).getTime() : 0;
+      return tb - ta;
+    })[0]!
 
     const linkRes = await dropboxApiCall(token, "/2/files/get_temporary_link", { path: csvFile.path_lower });
     const linkData = await linkRes.json() as { link?: string };
