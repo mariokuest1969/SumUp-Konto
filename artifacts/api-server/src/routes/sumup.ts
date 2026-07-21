@@ -361,10 +361,12 @@ router.post("/sumup/import", async (_req, res) => {
     if (!rows.length) return res.json({ success: false, message: "Keine Daten in der CSV-Datei gefunden.", recordsImported: 0, filename: csvFile.name });
 
     // Only insert rows that don't already exist — preserves notizen on existing rows
+    // Use sorted-key stringify to avoid JSONB key-reordering false mismatches
+    const stableStr = (obj: Record<string, string>) => JSON.stringify(Object.fromEntries(Object.keys(obj).sort().map(k => [k, obj[k]])));
     const existingRows = await db.select().from(sumupTransactionsTable);
-    const existingKeys = new Set(existingRows.map(r => JSON.stringify(r.data)));
+    const existingKeys = new Set(existingRows.map(r => stableStr(r.data as Record<string, string>)));
 
-    const newRows = rows.filter(data => !existingKeys.has(JSON.stringify(data)));
+    const newRows = rows.filter(data => !existingKeys.has(stableStr(data)));
     if (newRows.length > 0) {
       await db.insert(sumupTransactionsTable).values(newRows.map(data => ({ data, notiz: null })));
     }
