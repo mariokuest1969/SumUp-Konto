@@ -329,6 +329,41 @@ router.post("/sumup/uiw-export", async (req, res) => {
   }
 });
 
+router.post("/sumup/dedup", async (_req, res) => {
+  try {
+    const stableStr = (obj: Record<string, string>) =>
+      JSON.stringify(Object.fromEntries(Object.keys(obj).sort().map(k => [k, obj[k]])));
+
+    const allRows = await db.select().from(sumupTransactionsTable).orderBy(sumupTransactionsTable.id);
+
+    const seen = new Map<string, number>(); // stableStr -> id to keep
+    const toDelete: number[] = [];
+
+    for (const row of allRows) {
+      const key = stableStr(row.data as Record<string, string>);
+      if (seen.has(key)) {
+        toDelete.push(row.id);
+      } else {
+        seen.set(key, row.id);
+      }
+    }
+
+    if (toDelete.length > 0) {
+      await db.delete(sumupTransactionsTable).where(inArray(sumupTransactionsTable.id, toDelete));
+    }
+
+    res.json({
+      success: true,
+      message: toDelete.length > 0
+        ? `${toDelete.length} Duplikat${toDelete.length === 1 ? "" : "e"} entfernt.`
+        : "Keine Duplikate gefunden.",
+      recordsImported: -toDelete.length,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: String(err) });
+  }
+});
+
 router.post("/sumup/import", async (_req, res) => {
   try {
     const token = await getStoredToken();

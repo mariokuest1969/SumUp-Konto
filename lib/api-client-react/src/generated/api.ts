@@ -1396,6 +1396,52 @@ export const useBulkNoteSumupTransactions = <TError = ErrorType<unknown>,
       return useMutation(getBulkNoteSumupTransactionsMutationOptions(options));
     }
 
+export const getDedupSumupTransactionsUrl = () => {
+  return `/api/sumup/dedup`
+}
+
+/**
+ * @summary Remove duplicate transactions, keeping the one with the lowest id
+ */
+export const dedupSumupTransactions = async (options?: RequestInit): Promise<SumupImportResult> => {
+  return customFetch<SumupImportResult>(getDedupSumupTransactionsUrl(), {
+    ...options,
+    method: 'POST',
+  });
+}
+
+export const getDedupSumupTransactionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dedupSumupTransactions>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof dedupSumupTransactions>>, TError,void, TContext> => {
+  const mutationKey = ['dedupSumupTransactions'];
+  const {mutation: mutationOptions, request: requestOptions} = options ?
+        options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+        options
+        : {...options, mutation: {...options.mutation, mutationKey}}
+        : {mutation: { mutationKey, }, request: undefined};
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof dedupSumupTransactions>>, void> = () => {
+    return dedupSumupTransactions(requestOptions)
+  }
+  return { mutationFn, ...mutationOptions }
+}
+
+export type DedupSumupTransactionsMutationResult = NonNullable<Awaited<ReturnType<typeof dedupSumupTransactions>>>
+export type DedupSumupTransactionsMutationError = ErrorType<unknown>
+
+/**
+ * @summary Remove duplicate transactions, keeping the one with the lowest id
+ */
+export const useDedupSumupTransactions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dedupSumupTransactions>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof dedupSumupTransactions>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDedupSumupTransactionsMutationOptions(options));
+    }
+
 export const getImportSumupFromDropboxUrl = () => {
 
 

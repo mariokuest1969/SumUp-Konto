@@ -348,6 +348,19 @@ paths:
                   updated:
                     type: integer
 
+  /sumup/dedup:
+    post:
+      operationId: dedupSumupTransactions
+      tags: [sumup]
+      summary: Remove duplicate transactions, keeping the one with the lowest id
+      responses:
+        "200":
+          description: Dedup result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SumupImportResult"
+
   /sumup/import:
     post:
       operationId: importSumupFromDropbox

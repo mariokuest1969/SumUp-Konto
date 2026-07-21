@@ -4,16 +4,27 @@ import { useClerk, useUser } from "@clerk/react";
 import {
   useImportSumupFromDropbox,
   useExportSumupToDropbox,
+  useDedupSumupTransactions,
   getGetSumupStatsQueryKey,
   getListSumupTransactionsQueryKey,
   getGetSumupColumnsQueryKey,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { SumupTable } from "@/components/SumupTable";
 import { SumupStatsCard } from "@/components/SumupStatsCard";
 import { SumupSettingsDialog } from "@/components/SumupSettingsDialog";
 import { useToast } from "@/hooks/use-toast";
-import { CloudDownload, CloudUpload, Loader2, Settings, LogOut, Users } from "lucide-react";
+import { CloudDownload, CloudUpload, CopyMinus, Loader2, Settings, LogOut, Users } from "lucide-react";
 import { UserManagementDialog } from "@/components/UserManagementDialog";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -28,6 +39,8 @@ export default function Home() {
 
   const importMutation = useImportSumupFromDropbox();
   const exportMutation = useExportSumupToDropbox();
+  const dedupMutation = useDedupSumupTransactions();
+  const [dedupConfirmOpen, setDedupConfirmOpen] = useState(false);
 
   const handleImport = () => {
     importMutation.mutate(undefined, {
@@ -68,6 +81,26 @@ export default function Home() {
     });
   };
 
+  const handleDedup = () => {
+    dedupMutation.mutate(undefined, {
+      onSuccess: (data: { message?: string }) => {
+        toast({
+          title: "Duplikate entfernt",
+          description: data.message,
+        });
+        queryClient.invalidateQueries({ queryKey: getGetSumupStatsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getListSumupTransactionsQueryKey() });
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Fehler",
+          description: error?.message || "Ein unerwarteter Fehler ist aufgetreten.",
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b bg-card">
@@ -95,6 +128,16 @@ export default function Home() {
             >
               {exportMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />}
               Nach Dropbox exportieren
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setDedupConfirmOpen(true)}
+              disabled={dedupMutation.isPending}
+              className="gap-2"
+              title="Doppelte Einträge entfernen"
+            >
+              {dedupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CopyMinus className="w-4 h-4" />}
+              Duplikate entfernen
             </Button>
             <Button
               variant="ghost"
@@ -147,6 +190,25 @@ export default function Home() {
 
       <SumupSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <UserManagementDialog open={usersOpen} onOpenChange={setUsersOpen} />
+
+      <AlertDialog open={dedupConfirmOpen} onOpenChange={setDedupConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Duplikate entfernen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Alle doppelten Transaktionen werden gelöscht — es bleibt jeweils der älteste Eintrag erhalten. Diese Aktion kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setDedupConfirmOpen(false); handleDedup(); }}
+            >
+              Duplikate entfernen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
