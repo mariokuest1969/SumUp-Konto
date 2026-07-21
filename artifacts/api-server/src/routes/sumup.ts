@@ -336,10 +336,14 @@ router.post("/sumup/import", async (_req, res) => {
 
     const importFolder = (await getImportPath()) ?? DEFAULT_FOLDER;
     const listRes = await dropboxApiCall(token, "/2/files/list_folder", { path: importFolder, recursive: false });
-    const listData = await listRes.json() as { entries?: Array<{ name: string; path_lower: string; ".tag": string; server_modified?: string }> };
+    const listData = await listRes.json() as { entries?: Array<{ name: string; path_lower: string; ".tag": string; server_modified?: string }>; error_summary?: string };
+    if (listData.error_summary) {
+      return res.status(404).json({ success: false, message: `Dropbox-Ordner nicht gefunden: "${importFolder}". Bitte Importpfad in den Einstellungen prüfen. (${listData.error_summary})` });
+    }
     const entries = listData.entries ?? [];
+    const allFileNames = entries.filter(e => e[".tag"] === "file").map(e => e.name);
     const csvFiles = entries.filter((e) => e[".tag"] === "file" && e.name.toLowerCase().startsWith("transaktionsbericht") && e.name.toLowerCase().endsWith(".csv"));
-    if (!csvFiles.length) return res.status(404).json({ success: false, message: "Keine Transaktionsbericht-CSV-Datei gefunden." });
+    if (!csvFiles.length) return res.status(404).json({ success: false, message: `Keine Transaktionsbericht-CSV-Datei in "${importFolder}" gefunden. Vorhandene Dateien: ${allFileNames.length ? allFileNames.join(", ") : "(leer)"}` });
     // Immer die neueste Datei laden (nach server_modified absteigend sortiert)
     const csvFile = csvFiles.sort((a, b) => {
       const ta = a.server_modified ? new Date(a.server_modified).getTime() : 0;
